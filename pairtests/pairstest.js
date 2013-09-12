@@ -21,6 +21,7 @@ for (i = 1; i <= n; i ++) {
     page = webpage.create();
     (function(pg, pgNum) {
         pg.onConsoleMessage = function(msg) {
+            //console.log(msg);
             if (msg === 'Game over') {
                 // Game Over
                 console.log('Page ' + pgNum + ' finished.');
@@ -29,6 +30,9 @@ for (i = 1; i <= n; i ++) {
                 if (countClosed >= n) {
                     console.log('All pages finished. Exiting...');
                     phantom.exit();
+                }
+                else {
+                    console.log('Still waiting for ' + (n - countClosed) + ' clients to finish.');
                 }
             }
         }
