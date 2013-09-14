@@ -47,10 +47,9 @@ print(' * The PhantomJS script has finished.')
 print(' * Stopping server.')
 server_proc.kill()
 
+# Analyze output:
 start_ms = np.zeros(n, dtype=np.int)
 end_ms   = np.zeros(n, dtype=np.int)
-
-# Analyze output:
 for line in output.splitlines():
     tokens = line.split()
     # tokens should be of this form:
@@ -70,18 +69,20 @@ for line in output.splitlines():
 
 run_secs = (end_ms - start_ms) / 1000
 
+# Print runtime statistics:
+
+#print()
 #for idx, time in enumerate(run_secs):
-#    print('Runtime for connection %5d: %6.2f s' % (idx, time))
-#print('--------------------------------------')
+#    print('Runtime for connection %5d:%7.2f s' % (idx, time))
 
 print()
 print('Game runtime statistics:')
-print('Minimum: %6.2f s' % np.min(run_secs))
-print('Maximum: %6.2f s' % np.max(run_secs))
-print('Average: %6.2f s' % np.mean(run_secs))
-print('Median:  %6.2f s' % np.median(run_secs))
-print('Std Dev: %6.3f s' % np.std(run_secs))
-print('Sum:    %7.0f s'  % np.sum(run_secs))
+print('Minimum:%7.2f  s' % np.min(run_secs))
+print('Maximum:%7.2f  s' % np.max(run_secs))
+print('Average:%7.2f  s' % np.mean(run_secs))
+print('Median:%8.2f  s'  % np.median(run_secs))
+print('Std Dev:%8.3f s'  % np.std(run_secs))
+print('Sum:%8.0f     s'  % np.sum(run_secs))
 
 # Analyze message-log:
 msg_counts = {}
