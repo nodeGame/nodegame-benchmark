@@ -48,8 +48,9 @@ print(' * Stopping server.')
 server_proc.kill()
 
 # Analyze output:
-start_ms = np.zeros(n, dtype=np.int)
-end_ms   = np.zeros(n, dtype=np.int)
+base_ms  = None
+start_ms = np.zeros(n)
+end_ms   = np.zeros(n)
 for line in output.splitlines():
     tokens = line.split()
     # tokens should be of this form:
@@ -60,10 +61,13 @@ for line in output.splitlines():
     idx    = int(tokens[1])
     mstime = int(tokens[3])
 
+    if base_ms is None:
+        base_ms = mstime
+
     if status == 'Opened':
-        start_ms[idx] = mstime
+        start_ms[idx] = mstime - base_ms
     elif status == 'Finished':
-        end_ms[idx]   = mstime
+        end_ms[idx]   = mstime - base_ms
     else:
         raise Exception('Invalid input: "' + line + '"')
 
