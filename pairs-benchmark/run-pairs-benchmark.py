@@ -12,7 +12,7 @@ import subprocess as sub
 import numpy as np
 
 # CHANGE THIS FOR YOUR SETUP:
-nodegame_path =                 '../../nodegame/'
+nodegame_path =                 '../../ngtest/'
 server_path   = nodegame_path + 'node_modules/nodegame-server/'
 msglog_path   = server_path   + 'log/messages'
 
