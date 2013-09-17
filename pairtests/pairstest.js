@@ -25,6 +25,8 @@ for (i = 1; i <= n; i ++) {
                 // Game Over
                 console.log('Page ' + pgNum + ' finished.');
 
+                pg.close();
+
                 countClosed ++;
                 if (countClosed >= n) {
                     console.log('All pages finished. Exiting...');
@@ -34,7 +36,23 @@ for (i = 1; i <= n; i ++) {
                     console.log('Still waiting for ' + (n - countClosed) + ' clients to finish.');
                 }
             }
-        }
+
+            if (msg.toLowerCase().indexOf('error') >= 0) {
+                // Error
+                console.log('Error message: ' + msg);
+            }
+        };
+
+        pg.onError = function(msg, trace) {
+            var msgStack = ['ERROR: ' + msg];
+            if (trace && trace.length) {
+                msgStack.push('TRACE:');
+                trace.forEach(function(t) {
+                    msgStack.push(' -> ' + t.file + ': ' + t.line + (t.function ? ' (in function "' + t.function + '")' : ''));
+                });
+            }
+            console.error(msgStack.join('\n'));    var msgStack = ['ERROR: ' + msg];
+        };
 
         pg.open(url, function() {
             console.log('Opened page ' + pgNum + '.');
@@ -43,6 +61,6 @@ for (i = 1; i <= n; i ++) {
         setTimeout(function() {
             console.log('Capturing page ' + pgNum + '.');
             pg.render('screenshot_' + pgNum + '.png');
-        }, 100 * 1000);
+        }, 180 * 1000);
     })(page, i);
 }
