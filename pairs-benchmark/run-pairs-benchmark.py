@@ -2,6 +2,8 @@
 #
 # Runs a benchmark on the 'pairs' game.
 #
+# Usage: python run-pairs-benchmark.py [configfile]
+#
 # IMPORTANT: Set the path parameters below for your setup.
 #
 # 'node' and 'phantomjs' must be in the executable path,
@@ -11,48 +13,40 @@ import os, sys, time, re
 import subprocess as sub
 import numpy as np
 
-# CHANGE THIS FOR YOUR SETUP:
-nodegame_path =                 '../../ngtest/'
-server_path   = nodegame_path + 'node_modules/nodegame-server/'
-msglog_path   = server_path   + 'log/messages'
-
-# Program parameters:
-n = 4
-url = None
-debug = False
-
+# Load configuration:
+config_path = 'conf/config.py'
 if len(sys.argv) > 1:
-    n = int(sys.argv[1])
-if len(sys.argv) > 2:
-    url = sys.argv[2]
+    config_path = sys.argv[1]
+config = {}
+execfile(config_path, config)
 
 # Remove old message-log:
-if os.path.exists(msglog_path):
-    print ' * Removing old message log:', msglog_path
-    os.remove(msglog_path)
+if os.path.exists(config["msglog_path"]):
+    print ' * Removing old message log:', config["msglog_path"]
+    os.remove(config["msglog_path"])
 
 # Start server:
 print ' * Starting the server with the "pairs" game...'
 fnull = open(os.devnull, 'w')
-server_proc = sub.Popen(['node', 'server-pairs.js'], cwd=nodegame_path, stdout=fnull)
+server_proc = sub.Popen(['node', 'server-pairs.js'], cwd=config["nodegame_path"], stdout=fnull)
 time.sleep(3)
 
 # Call the PhantomJS script:
-print ' * Running the PhantomJS script with', n, 'connections...'
-phantom_call = ['../node_modules/.bin/phantomjs', 'phantom-pairs.js', str(n)]
-if url: phantom_call.append(url)
+print ' * Running the PhantomJS script with', config["n"], 'connections...'
+phantom_call = ['../node_modules/.bin/phantomjs', 'phantom-pairs.js', str(config["n"])]
+if config["url"]: phantom_call.append(config["url"])
 phantom_proc = sub.Popen(phantom_call, stdout=sub.PIPE, universal_newlines=True)
 
 # Get and analyze the script's output:
 base_ms  = None
-start_ms = np.zeros(n)
-end_ms   = np.zeros(n)
+start_ms = np.zeros(config["n"])
+end_ms   = np.zeros(config["n"])
 while True:
     line = phantom_proc.stdout.readline()
     if not line: break
     line = line.strip()
 
-    if debug:
+    if config["debug"]:
         print ' *** Got line:', line
 
     tokens = line.split()
@@ -84,7 +78,7 @@ run_secs = (end_ms - start_ms) / 1000
 
 # Print runtime statistics:
 
-if debug:
+if config["debug"]:
     print
     for idx, time in enumerate(run_secs):
         print ' *** Runtime for connection %5d:%7.2f s' % (idx, time)
@@ -101,7 +95,7 @@ print 'Sum:%8.0f     s'  % np.sum(run_secs)
 # Analyze message-log:
 msg_counts = {}
 pattern = re.compile(r'.*"action":"(\w+)".*"target":"(\w+)".*', flags=re.DOTALL)
-with open(msglog_path, 'r') as msglog:
+with open(config["msglog_path"], 'r') as msglog:
     for line in msglog.readlines():
         # Get message type, e.g. 'say.DATA':
         msg_type = pattern.sub(r'\1.\2', line)
