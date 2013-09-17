@@ -39,7 +39,7 @@ time.sleep(3)
 
 # Call the PhantomJS script and get its output:
 print ' * Running the PhantomJS script with', n, 'connections...'
-phantom_call = ['phantomjs', 'phantom-pairs.js', str(n)]
+phantom_call = ['../node_modules/.bin/phantomjs', 'phantom-pairs.js', str(n)]
 if url: phantom_call.append(url)
 output = sub.check_output(phantom_call, universal_newlines=True)
 print ' * The PhantomJS script has finished.'
