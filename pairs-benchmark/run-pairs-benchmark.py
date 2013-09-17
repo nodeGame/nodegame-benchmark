@@ -17,7 +17,7 @@ server_path   = nodegame_path + 'node_modules/nodegame-server/'
 msglog_path   = server_path   + 'log/messages'
 
 # Program parameters:
-n = 200
+n = 4
 url = None
 debug = True
 
