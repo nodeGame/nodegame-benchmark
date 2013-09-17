@@ -15,11 +15,12 @@ if (system.args.length >= 3) {
     url = system.args[2];
 }
 
+if (n <= 0) phantom.exit();
+
 for (i = 0; i < n; i ++) {
     page = webpage.create();
     (function(pg, pgNum) {
         pg.onConsoleMessage = function(msg) {
-            //console.log(msg);
             if (msg === 'Game over') {
                 // Game Over
                 console.log('Finished ' + pgNum + ' at ' + (new Date).getTime());

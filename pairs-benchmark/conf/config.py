@@ -6,3 +6,5 @@ msglog_path   = server_path   + 'log/messages'
 n = 4
 url = None
 debug = False
+
+csv_path = 'stat.csv'
