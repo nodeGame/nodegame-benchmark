@@ -19,7 +19,7 @@ msglog_path   = server_path   + 'log/messages'
 # Program parameters:
 n = 4
 url = None
-debug = True
+debug = False
 
 if len(sys.argv) > 1:
     n = int(sys.argv[1])
@@ -37,24 +37,23 @@ fnull = open(os.devnull, 'w')
 server_proc = sub.Popen(['node', 'server-pairs.js'], cwd=nodegame_path, stdout=fnull)
 time.sleep(3)
 
-# Call the PhantomJS script and get its output:
+# Call the PhantomJS script:
 print ' * Running the PhantomJS script with', n, 'connections...'
 phantom_call = ['../node_modules/.bin/phantomjs', 'phantom-pairs.js', str(n)]
 if url: phantom_call.append(url)
-output = sub.check_output(phantom_call, universal_newlines=True)
-print ' * The PhantomJS script has finished.'
+phantom_proc = sub.Popen(phantom_call, stdout=sub.PIPE, universal_newlines=True)
 
-# Stop server:
-print ' * Stopping server.'
-server_proc.kill()
-
-# Analyze output:
+# Get and analyze the script's output:
 base_ms  = None
 start_ms = np.zeros(n)
 end_ms   = np.zeros(n)
-for line in output.splitlines():
+while True:
+    line = phantom_proc.stdout.readline()
+    if not line: break
+    line = line.strip()
+
     if debug:
-        print 'Got line: ', line
+        print ' *** Got line:', line
 
     tokens = line.split()
     # tokens should be of this form:
@@ -75,19 +74,20 @@ for line in output.splitlines():
     else:
         raise Exception('Invalid input: "' + line + '"')
 
+print ' * The PhantomJS script has finished.'
+
+# Stop server:
+print ' * Stopping server.'
+server_proc.kill()
+
 run_secs = (end_ms - start_ms) / 1000
 
 # Print runtime statistics:
 
 if debug:
     print
-    print 'base_ms =', base_ms
-    print 'start_ms =', start_ms
-    print 'end_ms =', end_ms
-    print 'run_secs =', run_secs
-    print
     for idx, time in enumerate(run_secs):
-        print 'Runtime for connection %5d:%7.2f s' % (idx, time)
+        print ' *** Runtime for connection %5d:%7.2f s' % (idx, time)
 
 print
 print 'Game runtime statistics:'
