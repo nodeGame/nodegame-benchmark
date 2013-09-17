@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python2
 #
 # Runs a benchmark on the 'pairs' game.
 #
