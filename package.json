@@ -1,0 +1,23 @@
+{
+    "name": "nodegame-benchmark"
+  , "description": "Benchmark package for nodeGame"
+  , "version": "0.0.1"
+  , "main" : "index.js"
+  , "homepage": "http://nodegame.org"
+  , "author": "Stefano Balietti <futur.dorko@gmail.com>"
+  , "contributors": [
+        { "name": "Stefano Balietti", "email": "futur.dorko@gmail.com" }
+      , { "name": "Benedek Vartok", "email": "benedek.vartok@gmail.com" }
+    ]
+  , "repository": {
+        "type": "git"
+      , "url": "https://github.com/nodeGame/nodegame-benchmark.git"
+    }
+  , "dependencies": {
+      "phantomjs": ">= 1.9.2"
+    }
+  , "engines": { "node": ">= 0.6.11" }
+  , "licenses": [
+    { "type": "MIT" }
+  ]
+}
