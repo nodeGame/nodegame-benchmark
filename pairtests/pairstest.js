@@ -21,7 +21,6 @@ for (i = 1; i <= n; i ++) {
     page = webpage.create();
     (function(pg, pgNum) {
         pg.onConsoleMessage = function(msg) {
-            //console.log(msg);
             if (msg === 'Game over') {
                 // Game Over
                 console.log('Page ' + pgNum + ' finished.');
@@ -40,5 +39,10 @@ for (i = 1; i <= n; i ++) {
         pg.open(url, function() {
             console.log('Opened page ' + pgNum + '.');
         });
+
+        setTimeout(function() {
+            console.log('Capturing page ' + pgNum + '.');
+            pg.render('screenshot_' + pgNum + '.png');
+        }, 100 * 1000);
     })(page, i);
 }
