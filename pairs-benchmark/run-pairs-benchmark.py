@@ -19,6 +19,7 @@ msglog_path   = server_path   + 'log/messages'
 # Program parameters:
 n = 200
 url = None
+debug = True
 
 if len(sys.argv) > 1:
     n = int(sys.argv[1])
@@ -52,6 +53,9 @@ base_ms  = None
 start_ms = np.zeros(n)
 end_ms   = np.zeros(n)
 for line in output.splitlines():
+    if debug:
+        print('Got line: ', line)
+
     tokens = line.split()
     # tokens should be of this form:
     #  [ 'Opened', '3', 'at', '1379083161743' ], or
@@ -75,9 +79,15 @@ run_secs = (end_ms - start_ms) / 1000
 
 # Print runtime statistics:
 
-#print()
-#for idx, time in enumerate(run_secs):
-#    print('Runtime for connection %5d:%7.2f s' % (idx, time))
+if debug:
+    print()
+    print('base_ms =', base_ms)
+    print('start_ms =', start_ms)
+    print('end_ms =', end_ms)
+    print('run_secs =', run_secs)
+    print()
+    for idx, time in enumerate(run_secs):
+        print('Runtime for connection %5d:%7.2f s' % (idx, time))
 
 print()
 print('Game runtime statistics:')
