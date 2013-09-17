@@ -28,24 +28,24 @@ if len(sys.argv) > 2:
 
 # Remove old message-log:
 if os.path.exists(msglog_path):
-    print(' * Removing old message log:', msglog_path)
+    print ' * Removing old message log:', msglog_path
     os.remove(msglog_path)
 
 # Start server:
-print(' * Starting the server with the "pairs" game...')
+print ' * Starting the server with the "pairs" game...'
 fnull = open(os.devnull, 'w')
 server_proc = sub.Popen(['node', 'server-pairs.js'], cwd=nodegame_path, stdout=fnull)
 time.sleep(3)
 
 # Call the PhantomJS script and get its output:
-print(' * Running the PhantomJS script with', n, 'connections...')
+print ' * Running the PhantomJS script with', n, 'connections...'
 phantom_call = ['phantomjs', 'phantom-pairs.js', str(n)]
 if url: phantom_call.append(url)
 output = sub.check_output(phantom_call, universal_newlines=True)
-print(' * The PhantomJS script has finished.')
+print ' * The PhantomJS script has finished.'
 
 # Stop server:
-print(' * Stopping server.')
+print ' * Stopping server.'
 server_proc.kill()
 
 # Analyze output:
@@ -54,7 +54,7 @@ start_ms = np.zeros(n)
 end_ms   = np.zeros(n)
 for line in output.splitlines():
     if debug:
-        print('Got line: ', line)
+        print 'Got line: ', line
 
     tokens = line.split()
     # tokens should be of this form:
@@ -80,23 +80,23 @@ run_secs = (end_ms - start_ms) / 1000
 # Print runtime statistics:
 
 if debug:
-    print()
-    print('base_ms =', base_ms)
-    print('start_ms =', start_ms)
-    print('end_ms =', end_ms)
-    print('run_secs =', run_secs)
-    print()
+    print
+    print 'base_ms =', base_ms
+    print 'start_ms =', start_ms
+    print 'end_ms =', end_ms
+    print 'run_secs =', run_secs
+    print
     for idx, time in enumerate(run_secs):
-        print('Runtime for connection %5d:%7.2f s' % (idx, time))
+        print 'Runtime for connection %5d:%7.2f s' % (idx, time)
 
-print()
-print('Game runtime statistics:')
-print('Minimum:%7.2f  s' % np.min(run_secs))
-print('Maximum:%7.2f  s' % np.max(run_secs))
-print('Average:%7.2f  s' % np.mean(run_secs))
-print('Median:%8.2f  s'  % np.median(run_secs))
-print('Std Dev:%8.3f s'  % np.std(run_secs))
-print('Sum:%8.0f     s'  % np.sum(run_secs))
+print
+print 'Game runtime statistics:'
+print 'Minimum:%7.2f  s' % np.min(run_secs)
+print 'Maximum:%7.2f  s' % np.max(run_secs)
+print 'Average:%7.2f  s' % np.mean(run_secs)
+print 'Median:%8.2f  s'  % np.median(run_secs)
+print 'Std Dev:%8.3f s'  % np.std(run_secs)
+print 'Sum:%8.0f     s'  % np.sum(run_secs)
 
 # Analyze message-log:
 msg_counts = {}
@@ -113,7 +113,7 @@ with open(msglog_path, 'r') as msglog:
             msg_counts[msg_type] += 1
 
 # Print message counts:
-print()
-print('Message type frequencies:')
+print
+print 'Message type frequencies:'
 for msg_type in sorted(msg_counts.keys()):
-    print('%7d %s' % (msg_counts[msg_type], msg_type))
+    print '%7d %s' % (msg_counts[msg_type], msg_type)
