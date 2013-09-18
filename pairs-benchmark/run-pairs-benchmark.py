@@ -35,7 +35,7 @@ msg_counts = {
     'set.DATA': 0
 }
 csvwriter = csv.DictWriter(csvfile,
-    ['run', 'timestamp', 'room'] + sorted(msg_counts.keys()) +
+    ['id', 'run', 'timestamp', 'room'] + sorted(msg_counts.keys()) +
     ['runtimeA', 'runtimeB'],
     quoting=csv.QUOTE_NONNUMERIC)
 csvwriter.writeheader()
@@ -44,11 +44,13 @@ csvwriter.writeheader()
 fnull = open(os.devnull, 'w')
 phantom_call = ['../node_modules/.bin/phantomjs', 'phantom-pairs.js', str(config['num_connections'])]
 if config['url']: phantom_call.append(config['url'])
+start_timestamp = time.strftime('%s', time.localtime())
 
 # Do runs:
 for run_idx in xrange(1, config['num_runs'] + 1):
     print
     print 'Commencing run', run_idx, '/', config['num_runs']
+    run_timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
     # Remove old message-log:
     if os.path.exists(config['msglog_path']):
@@ -176,12 +178,12 @@ for run_idx in xrange(1, config['num_runs'] + 1):
                 room_msg_counts[roomidx][msg_type] += 1
     
     # Write to CSV-file:
-    timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
     for roomidx in xrange(num_rooms):
         playerA, playerB = room_players[roomidx]
         fields = {
+            'id': start_timestamp,
             'run': run_idx,
-            'timestamp': timestamp,
+            'timestamp': run_timestamp,
             'room': roomidx,
             'runtimeA': run_secs[id_to_page[playerA]],
             'runtimeB': run_secs[id_to_page[playerB]]
