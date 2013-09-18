@@ -1,0 +1,16 @@
+# Path to the main nodegame module:
+nodegame_path =                 '../../ngtest/'
+# Path to the nodegame-server module:
+server_path   = nodegame_path + 'node_modules/nodegame-server/'
+# Path to the message log file:
+msglog_path   = server_path   + 'log/messages'
+
+# Number of connections to open (should be even):
+n = 4
+# URL to connect to (None for 'http://localhost:8080/pairs/'):
+url = None
+# Flag for extra debugging output:
+debug = False
+
+# Path to CSV file where the statistics should be stored:
+csv_path = 'stat.csv'
