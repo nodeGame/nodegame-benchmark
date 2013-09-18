@@ -20,10 +20,14 @@ if (n <= 0) phantom.exit();
 for (i = 0; i < n; i ++) {
     page = webpage.create();
     (function(pg, pgNum) {
+        var clientId;
+
         pg.onConsoleMessage = function(msg) {
             if (msg === 'Game over') {
                 // Game Over
-                console.log('Finished ' + pgNum + ' at ' + (new Date).getTime());
+                clientId = pg.evaluate(function() { return node.player.id; });
+                console.log('Finished ' + pgNum + ' at ' +
+                    (new Date).getTime() + ' with ID ' + clientId);
 
                 countClosed ++;
                 if (countClosed >= n) {
