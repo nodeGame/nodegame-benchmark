@@ -113,7 +113,7 @@ msg_counts = {
 }
 num_rooms = (config['n'] + 1) / 2
 room_msg_counts = [msg_counts.copy() for i in xrange(num_rooms)]
-player_room = {}
+client_room = {}
 room_players = [None] * num_rooms
 with open(config['msglog_path'], 'r') as msglog:
     # Get room membership of players:
@@ -121,16 +121,18 @@ with open(config['msglog_path'], 'r') as msglog:
         # Parse JSON:
         msgobj = json.loads(line)['message']
 
-        # Remember room of players:
+        # Remember room of players and admins:
         if (msgobj['action'] == 'say' and
          msgobj['target'] == 'TXT' and
          msgobj['text'] == 'ROOMNO'):
-            player_a = msgobj['data']['pids'][0]
-            player_b = msgobj['data']['pids'][1]
-            roomidx = msgobj['data']['roomNo']
-            player_room[player_a] = roomidx
-            player_room[player_b] = roomidx
+            msgdata = msgobj['data']
+            player_a = msgdata['pids'][0]
+            player_b = msgdata['pids'][1]
+            roomidx = msgdata['roomNo']
             room_players[roomidx] = (player_a, player_b)
+
+            for client_id in msgdata['pids'] + msgdata['aids']:
+                client_room[client_id] = roomidx
 
     msglog.seek(0)
 
@@ -143,10 +145,10 @@ with open(config['msglog_path'], 'r') as msglog:
         msg_type = "{0}.{1}".format(msgobj['action'],
                                     msgobj['target'])
 
-        if msgobj['from'] in player_room:
-            roomidx = player_room[msgobj['from']]
-        elif msgobj['to'] in player_room:
-            roomidx = player_room[msgobj['to']]
+        if msgobj['from'] in client_room:
+            roomidx = client_room[msgobj['from']]
+        elif msgobj['to'] in client_room:
+            roomidx = client_room[msgobj['to']]
         else:
             continue
 
