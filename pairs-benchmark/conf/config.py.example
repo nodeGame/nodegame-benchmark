@@ -5,8 +5,10 @@ server_path   = nodegame_path + 'node_modules/nodegame-server/'
 # Path to the message log file:
 msglog_path   = server_path   + 'log/messages'
 
-# Number of connections to open (should be even):
-n = 4
+# Number of server runs:
+num_runs = 1
+# Number of simultaneous connections to open (should be even):
+num_connections = 4
 # URL to connect to (None for 'http://localhost:8080/pairs/'):
 url = None
 # Flag for extra debugging output:
