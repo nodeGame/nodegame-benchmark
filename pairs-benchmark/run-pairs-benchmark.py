@@ -9,7 +9,7 @@
 # 'node' and 'phantomjs' must be in the executable path,
 # 'phantom-pairs.js' must be in the current directory.
 
-import os, sys, time, re, csv
+import os, sys, time, json, csv
 import subprocess as sub
 import numpy as np
 
@@ -102,13 +102,17 @@ msg_counts = {
     'say.PDISCONNECT': 0,
     'say.PLAYER_UPDATE': 0,
     'say.SETUP': 0,
+    'say.TXT': 0,
     'set.DATA': 0
 }
-pattern = re.compile(r'.*"action":"(\w+)".*"target":"(\w+)".*', flags=re.DOTALL)
 with open(config['msglog_path'], 'r') as msglog:
     for line in msglog.readlines():
+        # Parse JSON:
+        msgobj = json.loads(line)
+
         # Get message type, e.g. 'say.DATA':
-        msg_type = pattern.sub(r'\1.\2', line)
+        msg_type = "{0}.{1}".format(msgobj['message']['action'],
+                                    msgobj['message']['target'])
 
         # Keep count of message type:
         if msg_type in msg_counts:
