@@ -13,6 +13,20 @@ import os, sys, time, json, csv
 import subprocess as sub
 import numpy as np
 
+def get_proc_vmpeak(pid):
+    try:
+        with open('/proc/{0}/status'.format(pid)) as status_file:
+            status = status_file.read()
+        vmpeak_idx = status.index('VmPeak:')
+        tokens = status[vmpeak_idx:].split(None, 3)
+        return tokens[1] + ' ' + tokens[2]
+    except:
+        return 'N/A'
+
+def get_timestamp():
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+
+
 # Load configuration:
 config_path = 'conf/config.py'
 if len(sys.argv) > 1:
@@ -35,8 +49,9 @@ msg_counts = {
     'set.DATA': 0
 }
 csvwriter = csv.DictWriter(csvfile,
-    ['id', 'run', 'timestamp', 'room'] + sorted(msg_counts.keys()) +
-    ['runtimeA', 'runtimeB'],
+    ['id', 'run', 'time_start', 'time_end', 'room'] +
+    sorted(msg_counts.keys()) +
+    ['runtimeA', 'runtimeB', 'mem_server', 'mem_phantom'],
     quoting=csv.QUOTE_NONNUMERIC)
 csvwriter.writeheader()
 
@@ -46,11 +61,12 @@ phantom_call = ['../node_modules/.bin/phantomjs', 'phantom-pairs.js', str(config
 if config['url']: phantom_call.append(config['url'])
 start_timestamp = time.strftime('%s', time.localtime())
 
+
 # Do runs:
 for run_idx in xrange(1, config['num_runs'] + 1):
     print
     print 'Commencing run', run_idx, '/', config['num_runs']
-    run_timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+    timestamp_start = get_timestamp()
 
     # Remove old message-log:
     if os.path.exists(config['msglog_path']):
@@ -60,11 +76,15 @@ for run_idx in xrange(1, config['num_runs'] + 1):
     # Start server:
     print ' * Starting the server with the "pairs" game...'
     server_proc = sub.Popen(['node', 'server-pairs.js'], cwd=config['nodegame_path'], stdout=fnull)
+    if config['debug']:
+        print ' *** Server PID:', server_proc.pid
     time.sleep(3)
     
     # Call the PhantomJS script:
     print ' * Running the PhantomJS script with', config['num_connections'], 'connections...'
     phantom_proc = sub.Popen(phantom_call, stdout=sub.PIPE, universal_newlines=True)
+    if config['debug']:
+        print ' *** PhantomJS PID:', phantom_proc.pid
     
     # Get and analyze the script's output:
     base_ms  = None
@@ -97,6 +117,7 @@ for run_idx in xrange(1, config['num_runs'] + 1):
             end_ms[idx]   = mstime - base_ms
             client_id = tokens[6]
             id_to_page[client_id] = idx
+            phantom_mem_usage = get_proc_vmpeak(phantom_proc.pid)
         else:
             raise Exception('Invalid input: "' + line + '"')
     
@@ -105,6 +126,11 @@ for run_idx in xrange(1, config['num_runs'] + 1):
     
     phantom_proc.wait()
     print ' * The PhantomJS script has finished.'
+
+    # Get memory usage:
+    server_mem_usage = get_proc_vmpeak(server_proc.pid)
+    print ' * Server peak memory usage:', server_mem_usage
+    print ' * PhantomJS peak memory usage:', phantom_mem_usage
     
     # Stop server:
     print ' * Stopping server.'
@@ -176,6 +202,8 @@ for run_idx in xrange(1, config['num_runs'] + 1):
             # Keep count of message type:
             if msg_type in msg_counts:
                 room_msg_counts[roomidx][msg_type] += 1
+
+    timestamp_end = get_timestamp()
     
     # Write to CSV-file:
     for roomidx in xrange(num_rooms):
@@ -183,10 +211,13 @@ for run_idx in xrange(1, config['num_runs'] + 1):
         fields = {
             'id': start_timestamp,
             'run': run_idx,
-            'timestamp': run_timestamp,
+            'time_start': timestamp_start,
+            'time_end': timestamp_end,
             'room': roomidx,
             'runtimeA': run_secs[id_to_page[playerA]],
-            'runtimeB': run_secs[id_to_page[playerB]]
+            'runtimeB': run_secs[id_to_page[playerB]],
+            'mem_server': server_mem_usage,
+            'mem_phantom': phantom_mem_usage
         }
         fields.update(room_msg_counts[roomidx])
 
