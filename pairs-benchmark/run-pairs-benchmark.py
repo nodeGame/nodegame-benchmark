@@ -13,15 +13,31 @@ import os, sys, time, json, csv
 import subprocess as sub
 import numpy as np
 
+# Return process' peak VM usage in kB, -1 on error
 def get_proc_vmpeak(pid):
     try:
         with open('/proc/{0}/status'.format(pid)) as status_file:
             status = status_file.read()
         vmpeak_idx = status.index('VmPeak:')
         tokens = status[vmpeak_idx:].split(None, 3)
-        return tokens[1] + ' ' + tokens[2]
+        unit_conversions = {
+            'KB': 1,
+            'MB': 1024
+        }
+        return int(tokens[1]) * unit_conversions[tokens[2].upper()]
     except:
-        return 'N/A'
+        return -1
+
+# Return process' user time in seconds, -1 on error
+def get_proc_user_time(pid):
+    try:
+        with open('/proc/{0}/stat'.format(pid)) as stat_file:
+            stat = stat_file.read()
+        user_ticks  = float(stat.split()[13])
+        ticks_per_sec = os.sysconf('SC_CLK_TCK')
+        return user_ticks / ticks_per_sec
+    except:
+        return -1
 
 def get_timestamp():
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -51,7 +67,8 @@ msg_counts = {
 csvwriter = csv.DictWriter(csvfile,
     ['id', 'run', 'time_start', 'time_end', 'room'] +
     sorted(msg_counts.keys()) +
-    ['runtimeA', 'runtimeB', 'mem_server', 'mem_phantom'],
+    ['runtimeA', 'runtimeB', 'mem_server', 'mem_phantom'] +
+    ['cpu_server', 'cpu_phantom'],
     quoting=csv.QUOTE_NONNUMERIC)
 csvwriter.writeheader()
 
@@ -118,6 +135,7 @@ for run_idx in xrange(1, config['num_runs'] + 1):
             client_id = tokens[6]
             id_to_page[client_id] = idx
             phantom_mem_usage = get_proc_vmpeak(phantom_proc.pid)
+            phantom_cpu_secs = get_proc_user_time(phantom_proc.pid)
         else:
             raise Exception('Invalid input: "' + line + '"')
     
@@ -127,10 +145,13 @@ for run_idx in xrange(1, config['num_runs'] + 1):
     phantom_proc.wait()
     print ' * The PhantomJS script has finished.'
 
-    # Get memory usage:
+    # Get resource usage:
     server_mem_usage = get_proc_vmpeak(server_proc.pid)
-    print ' * Server peak memory usage:', server_mem_usage
-    print ' * PhantomJS peak memory usage:', phantom_mem_usage
+    server_cpu_secs = get_proc_user_time(server_proc.pid)
+    print ' * Server peak memory usage:', server_mem_usage, 'kB'
+    print ' * PhantomJS peak memory usage:', phantom_mem_usage, 'kB'
+    print ' * Server CPU time:', server_cpu_secs, 's'
+    print ' * PhantomJS CPU time:', phantom_cpu_secs, 's'
     
     # Stop server:
     print ' * Stopping server.'
@@ -217,7 +238,9 @@ for run_idx in xrange(1, config['num_runs'] + 1):
             'runtimeA': run_secs[id_to_page[playerA]],
             'runtimeB': run_secs[id_to_page[playerB]],
             'mem_server': server_mem_usage,
-            'mem_phantom': phantom_mem_usage
+            'mem_phantom': phantom_mem_usage,
+            'cpu_server': server_cpu_secs,
+            'cpu_phantom': phantom_cpu_secs,
         }
         fields.update(room_msg_counts[roomidx])
 
