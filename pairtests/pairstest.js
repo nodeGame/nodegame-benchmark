@@ -3,6 +3,14 @@
 var webpage = require('webpage'),
     system = require('system');
 
+function logObject(obj) {
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            console.log('*', key, ':', obj[key]);
+        }
+    }
+}
+
 var url = 'http://localhost:8080/pairs/';
 var n = 2;
 var i, page;
@@ -15,17 +23,23 @@ if (system.args.length >= 3) {
     url = system.args[2];
 }
 
+// Disable cookies
+phantom.cookiesEnabled = false;
+
 console.log('Opening ' + n + ' connections to "' + url + '"...');
 
 for (i = 1; i <= n; i ++) {
     page = webpage.create();
     (function(pg, pgNum) {
+        var timeoutId;
+
         pg.onConsoleMessage = function(msg) {
             if (msg === 'Game over') {
                 // Game Over
                 console.log('Page ' + pgNum + ' finished.');
 
-                pg.close();
+                // Don't capture the screen of the finished client
+                clearTimeout(timeoutId);
 
                 countClosed ++;
                 if (countClosed >= n) {
@@ -58,9 +72,25 @@ for (i = 1; i <= n; i ++) {
             console.log('Opened page ' + pgNum + '.');
         });
 
-        setTimeout(function() {
+        timeoutId = setTimeout(function() {
+            console.log();
             console.log('Capturing page ' + pgNum + '.');
             pg.render('screenshot_' + pgNum + '.png');
-        }, 180 * 1000);
+
+            stateObj = pg.evaluate(function() {
+                return {
+                    player: node.player,
+                    pl:     node.game.pl
+                };
+            });
+
+            console.log('player: ');
+            logObject(stateObj.player);
+            console.log('player.stage: ');
+            logObject(stateObj.player.stage);
+            console.log('pl.db: ');
+            logObject(stateObj.pl.db);
+            console.log();
+        }, 240 * 1000);
     })(page, i);
 }
