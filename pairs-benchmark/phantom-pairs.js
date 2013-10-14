@@ -17,6 +17,9 @@ if (system.args.length >= 3) {
 
 if (n <= 0) phantom.exit();
 
+// Disable cookies
+phantom.cookiesEnabled = false;
+
 for (i = 0; i < n; i ++) {
     page = webpage.create();
     (function(pg, pgNum) {
