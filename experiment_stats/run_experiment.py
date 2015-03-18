@@ -42,6 +42,22 @@ def write_timeout(timeout, reliable, cfg):
             print line
 
 
+def sizeof_fmt(num, suffix='B'):
+    """ Utility function to convert byte amounts to human readable format.
+    Taken from http://stackoverflow.com/a/1094933/2528077"""
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
+
+def time_fmt(time):
+    """ Utilty function to convert duration to human readable format. Follows
+    default format of the unix `time` command. """
+    return "{:.0f}m{:.3f}s".format(time // 60, time % 60)
+
+
 def run_launcher(cfg):
     """ Executes `node launcher.js` from the right cwd and logs stdout and
     stderr to a previously defined folder.
@@ -195,10 +211,10 @@ def main():
                     'timeout': timeout,
                     'exp_ret_code': ret_exp,
                     'test_ret_code': ret_test,
-                    'cpu_time_user': cpu[0],
-                    'cpu_time_system': cpu[1],
-                    'mem_info_rss': mem[0],
-                    'mem_info_vms': mem[1]
+                    'cpu_time_user': time_fmt(cpu[0]),
+                    'cpu_time_system': time_fmt(cpu[1]),
+                    'mem_info_rss': sizeof_fmt(mem[0]),
+                    'mem_info_vms': sizeof_fmt(mem[1])
                 }
 
                 metrics_writer.writerow(exp_metrics)
