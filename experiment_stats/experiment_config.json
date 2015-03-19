@@ -11,7 +11,10 @@
     "test_dir": "/Users/jdoerrie/Dropbox/ETH_Zurich/nodegame/games/ultimatum/",
 
     "game_settings_file": "/Users/jdoerrie/Dropbox/ETH_Zurich/nodegame/games/ultimatum/test/settings.js",
-    "num_games_keyword": "numGames",
+
+    "num_games_kwd": "numGames",
+    "sio_transports_kwd": "sioTransports",
+    "sio_transports": ["websocket", "flashsocket", "htmlfile", "xhr-polling", "jsonp-polling"],
 
     "variables_file": "/Users/jdoerrie/Dropbox/ETH_Zurich/nodegame/node_modules/nodegame-client/lib/modules/variables.js",
     "rel_msgs_var": "k.reliableMessaging",

@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import re
 import os
+import sys
 import json
 import fileinput
 import subprocess
@@ -9,6 +11,7 @@ import time
 import csv
 import psutil
 import platform
+import datetime
 from argparse import ArgumentParser
 from collections import Counter
 
@@ -17,9 +20,21 @@ def write_num_games(num_games, cfg):
     """ Writes the number of games `num_games` to the `game_settings_file`
     as specified in the configuration file.
     """
-    regex = re.compile(r'({0})\W*:\W*\d+'.format(cfg['num_games_keyword']))
+    regex = re.compile(r'({0})\s*:\s*\d+'.format(cfg['num_games_kwd']))
     for line in fileinput.input(cfg['game_settings_file'], inplace=True):
-        print regex.sub(r'\1: ' + str(num_games), line.rstrip())
+        print(regex.sub(r'\1: ' + str(num_games), line.rstrip()))
+
+
+def write_sio_transports(cfg):
+    """ Writes the number of games `num_games` to the `game_settings_file`
+    as specified in the configuration file.
+    """
+    # the following encoding is necessary to disable unicode (i.e. u['foobar'])
+    # output, that is not readable by javascript
+    sio_transports = [trans.encode('utf8') for trans in cfg['sio_transports']]
+    regex = re.compile(r'({0})\s*:\s*\[.*\]'.format(cfg['sio_transports_kwd']))
+    for line in fileinput.input(cfg['game_settings_file'], inplace=True):
+        print(regex.sub(r'\1: ' + str(sio_transports), line.rstrip()))
 
 
 def write_timeout(timeout, reliable, cfg):
@@ -27,19 +42,19 @@ def write_timeout(timeout, reliable, cfg):
     `variables_file`. Note that even though timeout is written every time it
     only takes effect if reliable == True.
     """
-    regex_reliable = re.compile(r'({0})\W*=\W*(true|false)'.
+    regex_reliable = re.compile(r'({0})\s*=\s*(true|false)'.
                                 format(cfg['rel_msgs_var']))
 
-    regex_retry = re.compile(r'({0})\W*=\W*\d+'.format(cfg['rel_retry_var']))
+    regex_retry = re.compile(r'({0})\s*=\s*\d+'.format(cfg['rel_retry_var']))
 
     for line in fileinput.input(cfg['variables_file'], inplace=True):
         line = line.rstrip()
         if regex_reliable.search(line):
-            print regex_reliable.sub(r'\1 = ' + str(reliable).lower(), line)
+            print(regex_reliable.sub(r'\1 = ' + str(reliable).lower(), line))
         elif regex_retry.search(line):
-            print regex_retry.sub(r'\1 = ' + str(timeout), line)
+            print(regex_retry.sub(r'\1 = ' + str(timeout), line))
         else:
-            print line
+            print(line)
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -85,7 +100,12 @@ def get_process_metrics(proc):
     """
     p = psutil.Process(proc.pid)
     while proc.poll() == None:
-        cpu, mem, conns = p.cpu_times(), p.memory_info(), p.connections('all')
+        try:
+            cpu = p.cpu_times()
+            mem = p.memory_info()
+            conns = p.connections('all')
+        except AccessDenied:
+            pass
         time.sleep(1)
     retcode = proc.wait()
 
@@ -97,20 +117,70 @@ def run_test(cfg):
     return subprocess.call(['npm', 'test'], cwd=cfg['test_dir'])
 
 
-def parse_server_msg_file(msg_file):
+def parse_server_msg_file(msg_file, is_reliable):
     """ Parses the server message log file. Extract metrics about the total
-    number of messages and the break down according to type.
+    number of messages and the break down according to type. In addition
+    computes the average delay of a message round-trip if reliable messaging is
+    enabled.
     """
     msg_counter = Counter()
+    timestamps = {'client': {}, 'server': {}}
+
     with open(msg_file) as messages:
         for message in messages:
             msg_counter['total'] += 1
             winstonMsg = json.loads(message)
             gameMsg = json.loads(winstonMsg['message'])
             msg_counter[gameMsg['target']] += 1
+            if not is_reliable:
+                continue
 
-    print msg_counter
-    return msg_counter
+            msg_id = str(gameMsg['id'])
+            created = datetime.datetime.strptime(gameMsg['created'],
+                                                 '%Y-%m-%dT%H:%M:%S.%fZ')
+
+            time = datetime.datetime.strptime(winstonMsg['timestamp'],
+                                              '%Y-%m-%dT%H:%M:%S.%fZ')
+
+            if msg_id not in timestamps['client']:
+                timestamps['client'][msg_id] = [0, 0]
+            if msg_id not in timestamps['server']:
+                timestamps['server'][msg_id] = [0, 0]
+
+            if gameMsg['target'] == 'ACK':
+                if gameMsg['to'] == 'SERVER':
+                    timestamps['server'][gameMsg['text']][1] = time
+                elif gameMsg['from'] == 'ultimatum':
+                    timestamps['client'][gameMsg['text']][1] = time
+
+            else:
+                if gameMsg['to'] == 'SERVER':
+                    timestamps['client'][msg_id][0] = created
+                elif gameMsg['from'] == 'ultimatum':
+                    timestamps['server'][msg_id][0] = time
+
+    if not is_reliable:
+        return msg_counter
+
+    client_server_times = [
+        v[1] - v[0] for v in timestamps['client'].values() if v[0] and v[1]
+    ]
+
+    server_client_times = {
+        v[1] - v[0] for v in timestamps['server'].values() if v[0] and v[1]
+    }
+
+    avg_client_server_time = sum(
+        client_server_times, datetime.timedelta(0)
+    ).total_seconds() / len(client_server_times)
+
+    avg_server_client_time = sum(
+        server_client_times, datetime.timedelta(0)
+    ).total_seconds() / len(server_client_times)
+
+    print ("The average delay to deliver a message was of {:.0f} milliseconds."
+           .format(avg_server_client_time * 1000))
+    return msg_counter, avg_client_server_time, avg_server_client_time
 
 
 def main():
@@ -148,6 +218,8 @@ def main():
     if not args.reliable:
         args.timeouts = [cfg["default_timeout"]]
 
+    write_sio_transports(cfg)
+
     # record the current unix time in micro seconds and store it in cfg
     cfg['exp_time'] = int(time.time() * 10**6)
 
@@ -166,7 +238,8 @@ def main():
         metrics_names = [
             "id", "machine", "num_conns", "is_reliable", "timeout",
             "exp_ret_code", "test_ret_code", "cpu_time_user",
-            "cpu_time_system", "mem_info_rss", "mem_info_vms"
+            "cpu_time_system", "mem_info_rss", "mem_info_vms",
+            "avg_client_time", "avg_server_time"
         ]
 
         metrics_writer = csv.DictWriter(csv_metrics, fieldnames=metrics_names)
@@ -198,10 +271,20 @@ def main():
                 # run_time serves as the current run id, again unix timestamp
                 run_time = int(time.time() * 10**6)
 
+                print ("Number of Connections: {}, Reliable: {}, Timeout: {}".
+                       format(num_games, bool(args.reliable), timeout))
+
                 proc = run_launcher(cfg)
                 ret_exp, cpu, mem, conns = get_process_metrics(proc)
 
                 ret_test = run_test(cfg)
+
+                if args.reliable:
+                    msg_counter, avg_client_time, avg_server_time = \
+                        parse_server_msg_file(server_msg, args.reliable)
+                else:
+                    msg_counter = \
+                        parse_server_msg_file(server_msg, args.reliable)
 
                 exp_metrics = {
                     'id': run_time,
@@ -214,11 +297,14 @@ def main():
                     'cpu_time_user': time_fmt(cpu[0]),
                     'cpu_time_system': time_fmt(cpu[1]),
                     'mem_info_rss': sizeof_fmt(mem[0]),
-                    'mem_info_vms': sizeof_fmt(mem[1])
+                    'mem_info_vms': sizeof_fmt(mem[1]),
+                    'avg_client_time':
+                        time_fmt(avg_client_time) if args.reliable else 'N/A',
+                    'avg_server_time':
+                        time_fmt(avg_server_time) if args.reliable else 'N/A'
                 }
 
                 metrics_writer.writerow(exp_metrics)
-                msg_counter = parse_server_msg_file(server_msg)
 
                 msg_counter["id"] = run_time
                 # we manually set not occurring counts to 0 to avoid empty
