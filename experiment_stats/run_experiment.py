@@ -9,11 +9,20 @@ import fileinput
 import subprocess
 import time
 import csv
-import psutil
 import platform
 import datetime
 from argparse import ArgumentParser
 from collections import Counter
+
+try:
+    import psutil
+except ImportError:
+    found_psutil = False
+    print("Was not able to import psutil. Please install it via `pip install "
+          "psutil`.\nThe experiment will run, but it won't be able to extract "
+          "CPU or memory metrics.\n", file=sys.stderr)
+else:
+    found_psutil = True
 
 
 def write_num_games(num_games, cfg):
@@ -87,7 +96,7 @@ def run_launcher(cfg):
 
     with open(stdout_log, 'a') as f_out, open(stderr_log, 'a') as f_err:
         node_proc = subprocess.Popen(['node', cfg['launcher_file']],
-                                     cwd=cfg['launcher_dir'],
+                                     cwd=cfg['launcher_cwd'],
                                      stdout=f_out,
                                      stderr=f_err)
 
@@ -114,7 +123,7 @@ def get_process_metrics(proc):
 
 def run_test(cfg):
     """ Runs `npm test` from the correct cwd and returns the return code. """
-    return subprocess.call(['npm', 'test'], cwd=cfg['test_dir'])
+    return subprocess.call(['npm', 'test'], cwd=cfg['test_cwd'])
 
 
 def parse_server_msg_file(msg_file, is_reliable):
@@ -275,7 +284,10 @@ def main():
                        format(num_games, bool(args.reliable), timeout))
 
                 proc = run_launcher(cfg)
-                ret_exp, cpu, mem, conns = get_process_metrics(proc)
+                if found_psutil:
+                    ret_exp, cpu, mem, conns = get_process_metrics(proc)
+                else:
+                    ret_exp = proc.wait()
 
                 ret_test = run_test(cfg)
 
@@ -294,10 +306,14 @@ def main():
                     'timeout': timeout,
                     'exp_ret_code': ret_exp,
                     'test_ret_code': ret_test,
-                    'cpu_time_user': time_fmt(cpu[0]),
-                    'cpu_time_system': time_fmt(cpu[1]),
-                    'mem_info_rss': sizeof_fmt(mem[0]),
-                    'mem_info_vms': sizeof_fmt(mem[1]),
+                    'cpu_time_user':
+                        time_fmt(cpu[0]) if found_psutil else 'N/A',
+                    'cpu_time_system':
+                        time_fmt(cpu[1]) if found_psutil else 'N/A',
+                    'mem_info_rss':
+                        sizeof_fmt(mem[0]) if found_psutil else 'N/A',
+                    'mem_info_vms':
+                        sizeof_fmt(mem[1]) if found_psutil else 'N/A',
                     'avg_client_time':
                         time_fmt(avg_client_time) if args.reliable else 'N/A',
                     'avg_server_time':
