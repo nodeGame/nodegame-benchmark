@@ -6,23 +6,23 @@ Benchmark and Testing for nodeGame.
 
 The benchmark script reads settings from a config file, starts the
 nodeGame server, connects a number of phantoms to the specified
-channel and let them play.
+channel and lets them play.
 
 While playing, the script collects statistics about the number and the
 timing of all exchanged messages, and also about CPU and memory usage
 (if the dependency `psutil` is installed).
 
-When all games are finished, all statistics are saved into csv files,
-as specified in the settings. If an automated test script was defined
-by the game in the package.json file, such a test-script will executed
-and the results displayed on screen.
+When all games are finished, all statistics are saved to csv files, as
+specified in the settings. If an automated test script is defined by
+the package.json file inside the game directory, such a test-script
+will executed and the results displayed on screen.
 
 
 ## Usage
 
 1. Copy the file `config-sample.json` to `config.json`
 2. Edit `config.json` with the correct settings for your environment (see below)
-3. Run the benchmark either as `python run_benchmark.py` or simply
+3. Run the benchmark either with `python run_benchmark.py` or simply with
 `./run_benchamrk.py`
 
 ### config.json
@@ -36,22 +36,22 @@ This file needs to define the following variables:
     "launcher_cwd": "~/nodegame/",
     "launcher_file": "games/ultimatum/test/launcher-autoplay.js",
 
-    // "exp_log_dir" defines the directory, where the benchmark should write its
+    // "benchmark_log_dir" defines the directory, where the benchmark should write its
     // logs to, "msg_log_dir" is the folder where server messages are written and
     // "server_msg_file" is the correponding file in that directory. This file is
     // used to compute message delays and will be overwritten at the start of
     // every benchmark.
-    "exp_log_dir": "~/nodegame/node_modules/nodegame-benchmark/logs/",
+    "exp_log_dir": "./log/",
     "msg_log_dir": "~/nodegame/log/",
-    "server_msg_file": "messages.log",
+    "server_msg_file": "messages.log",    
 
     // "game" defines the game which will be run in the experiemnt, "csv_out_dir"
     // specifies the folder where the benchmark data will be written to and
     // "test_cwd" defines from where a sanity check of the benchmark data should
     // be executed, this is equivalent to `cd $test_cwd && npm test`.
     "game": "ultimatum",
-    "csv_out_dir": "~/nodegame/games/ultimatum/data/",
     "test_cwd": "~/nodegame/games/ultimatum/",
+    "csv_out_dir": "./csv/",
 
     // "game_settings_file" defines the path to a settings.js file where game
     // related properties are defined. Here numGames and sioTransports are of

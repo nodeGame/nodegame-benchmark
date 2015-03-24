@@ -1,3 +1,3 @@
 # Log Folder
 
-Default log folders for benchmarks.
+Default log folder for benchmarks.
