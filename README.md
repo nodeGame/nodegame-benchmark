@@ -2,56 +2,26 @@
 
 Benchmark and Testing for nodeGame.
 
+## Overview
+
+Reads settings from configuration, starts the nodeGame server,
+connects phantoms to the desired channel, compute statistics about the
+number and timing of messages exchanged, and also statistics about CPU
+and memory use if the dependency `psutil` is installed. 
+
+All statistics are saved into csv files, as specified in the settings.
+
+When a gameover message is intercepted, any automated test defined by
+the game in the package.json file are going to be run, and results are
+displayed to the user.
+
+
 ## Usage
 
-This folder contains two files, `run_experiment.py` and
-`config.json`. `run_experiment.py` does the heavy lifting,
-`config.json` is the corresponding config file.
-
-## run_experiment.py
-
-It can be invoked via either `python run_experiment.py` or simply
-`./run_experiment.py` assuming the execute bit is set.
-
-`run_experiment.py` requires certain command line flags to be set,
-which are explained by its own help page:
-
-
-```
-$ ./run_experiment.py --help
-usage: run_experiment.py [-h] -c CONFIG -n NUM_GAMES [NUM_GAMES ...] [-r]
-                         [-t TIMEOUTS [TIMEOUTS ...]]
-
-Execute nodegame experiment and write experiment data to csv file.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -c CONFIG, --config CONFIG
-                        Experiment configuration file in JSON format
-                        containing variables that likely do not change between
-                        experiments.
-  -n NUM_GAMES [NUM_GAMES ...], --num_games NUM_GAMES [NUM_GAMES ...]
-                        Number of simultaneous games to consider for the
-                        experiment, can be a list.
-  -r, --reliable        Boolean flag to turn on reliable messaging.
-  -t TIMEOUTS [TIMEOUTS ...], --timeouts TIMEOUTS [TIMEOUTS ...]
-                        Timeouts to consider for the experiment when reliable
-                        messaging is used, can be a list.
-```
-
-So for example a mimimal invocation is
-
-    ./run_experiment.py -c config.json -n 1
-
-meaning it should read the config file from the same
-folder and run one experiment where there is 1 game. 
-
-A more sophisticated invocation is:
-
-`./run_experiment.py -c config.json -n 1 2 4 8 -r -t 1000 2000 4000
-where we consider 1, 2, 4 and 8 simultaneous connections, reliable
-messaging to be activated, and timeouts of 1000, 2000 and 4000
-milliseconds.
+1. Copy the file `config-sample.json` to `config.json`
+2. Edit `config.json` with the correct settings for your environment (see below)
+3. Run the benchmark either as `python run_benchmark.py` or simply
+`./run_benchamrk.py`
 
 ### config.json
 
@@ -104,7 +74,46 @@ This file needs to define the following variables:
 }
 ```
 
-## Dependencies
+
+## Options for run_benchmark
+
+```
+$ ./run_experiment.py --help
+usage: run_experiment.py [-h] -c CONFIG -n NUM_GAMES [NUM_GAMES ...] [-r]
+                         [-t TIMEOUTS [TIMEOUTS ...]]
+
+Execute nodegame experiment and write experiment data to csv file.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CONFIG, --config CONFIG
+                        Experiment configuration file in JSON format
+                        containing variables that likely do not change between
+                        experiments.
+  -n NUM_GAMES [NUM_GAMES ...], --num_games NUM_GAMES [NUM_GAMES ...]
+                        Number of simultaneous games to consider for the
+                        experiment, can be a list.
+  -r, --reliable        Boolean flag to turn on reliable messaging.
+  -t TIMEOUTS [TIMEOUTS ...], --timeouts TIMEOUTS [TIMEOUTS ...]
+                        Timeouts to consider for the experiment when reliable
+                        messaging is used, can be a list.
+```
+
+## Examples
+
+Reads the config file and run 1 experiment where there is 1 game:
+
+    ./run_.py -c config.json -n 1
+
+
+Here we consider 1, 2, 4 and 8 simultaneous connections, reliable
+messaging to be activated, and timeouts of 1000, 2000 and 4000
+milliseconds.
+
+    ./run_experiment.py -c config.json -n 1 2 4 8 -r -t 1000 2000 4000
+
+
+## Requirements and Dependencies
 
 To be able to report CPU and memory usage of the experiment,
 `run_experiment.py` relies on the third party module `psutil`. You
