@@ -41,11 +41,11 @@ This file needs to define the following variables:
     // "server_msg_file" is the correponding file in that directory. This file is
     // used to compute message delays and will be overwritten at the start of
     // every benchmark.
-    "exp_log_dir": "./log/",
+    "benchmark_log_dir": "./log/",
     "msg_log_dir": "~/nodegame/log/",
     "server_msg_file": "messages.log",    
 
-    // "game" defines the game which will be run in the experiemnt, "csv_out_dir"
+    // "game" defines the game which will be run in the benchmark, "csv_out_dir"
     // specifies the folder where the benchmark data will be written to and
     // "test_cwd" defines from where a sanity check of the benchmark data should
     // be executed, this is equivalent to `cd $test_cwd && npm test`.
