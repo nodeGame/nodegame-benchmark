@@ -34,18 +34,18 @@ This file needs to define the following variables:
     "launcher_cwd": "~/nodegame/",
     "launcher_file": "games/ultimatum/test/launcher-autoplay.js",
 
-    // "exp_log_dir" defines the directory, where the experiment should write its
+    // "exp_log_dir" defines the directory, where the benchmark should write its
     // logs to, "msg_log_dir" is the folder where server messages are written and
     // "server_msg_file" is the correponding file in that directory. This file is
     // used to compute message delays and will be overwritten at the start of
-    // every experiment.
-    "exp_log_dir": "~/nodegame/node_modules/nodegame-benchmark/experiment_stats/logs/",
+    // every benchmark.
+    "exp_log_dir": "~/nodegame/node_modules/nodegame-benchmark/logs/",
     "msg_log_dir": "~/nodegame/log/",
     "server_msg_file": "messages.log",
 
     // "game" defines the game which will be run in the experiemnt, "csv_out_dir"
-    // specifies the folder where the experiment data will be written to and
-    // "test_cwd" defines from where a sanity check of the experiment data should
+    // specifies the folder where the benchmark data will be written to and
+    // "test_cwd" defines from where a sanity check of the benchmark data should
     // be executed, this is equivalent to `cd $test_cwd && npm test`.
     "game": "ultimatum",
     "csv_out_dir": "~/nodegame/games/ultimatum/data/",
@@ -78,30 +78,30 @@ This file needs to define the following variables:
 ## Options for run_benchmark
 
 ```
-$ ./run_experiment.py --help
-usage: run_experiment.py [-h] -c CONFIG -n NUM_GAMES [NUM_GAMES ...] [-r]
+$ ./run_benchmark.py --help
+usage: run_benchmark.py [-h] -c CONFIG -n NUM_GAMES [NUM_GAMES ...] [-r]
                          [-t TIMEOUTS [TIMEOUTS ...]]
 
-Execute nodegame experiment and write experiment data to csv file.
+Execute nodegame benchmark and write benchmark data to csv file.
 
 optional arguments:
   -h, --help            show this help message and exit
   -c CONFIG, --config CONFIG
-                        Experiment configuration file in JSON format
+                        Benchmark configuration file in JSON format
                         containing variables that likely do not change between
-                        experiments.
+                        benchmarks.
   -n NUM_GAMES [NUM_GAMES ...], --num_games NUM_GAMES [NUM_GAMES ...]
                         Number of simultaneous games to consider for the
-                        experiment, can be a list.
+                        benchmark, can be a list.
   -r, --reliable        Boolean flag to turn on reliable messaging.
   -t TIMEOUTS [TIMEOUTS ...], --timeouts TIMEOUTS [TIMEOUTS ...]
-                        Timeouts to consider for the experiment when reliable
+                        Timeouts to consider for the benchmark when reliable
                         messaging is used, can be a list.
 ```
 
-## Examples
+## Example Runs
 
-Reads the config file and run 1 experiment where there is 1 game:
+Reads the config file and run 1 benchmark where there is 1 game:
 
     ./run_.py -c config.json -n 1
 
@@ -110,14 +110,14 @@ Here we consider 1, 2, 4 and 8 simultaneous connections, reliable
 messaging to be activated, and timeouts of 1000, 2000 and 4000
 milliseconds.
 
-    ./run_experiment.py -c config.json -n 1 2 4 8 -r -t 1000 2000 4000
+    ./run_benchmark.py -c config.json -n 1 2 4 8 -r -t 1000 2000 4000
 
 
 ## Requirements and Dependencies
 
-To be able to report CPU and memory usage of the experiment,
-`run_experiment.py` relies on the third party module `psutil`. You
-should be able to install it via 
+To be able to report CPU and memory usage, `run_benchmark.py` relies
+on the third party module `psutil`. You should be able to install it
+via:
 
      pip install psutil
 
