@@ -83,4 +83,4 @@ This file needs to define the following variables:
 
 ## Dependencies
 
-To be able to report CPU and memory usage of the experiment, `run_experiment.py` relies on the third party module `psutil`. You should be able to install it via `pip install psutil`, if not please see [this manual](https://github.com/giampaolo/psutil/blob/master/INSTALL.rst) for further help. Furthermore the script relies on features on included with Python 2.7, so please make sure to have a recent Python installation available.
+To be able to report CPU and memory usage of the experiment, `run_experiment.py` relies on the third party module `psutil`. You should be able to install it via `pip install psutil`, if not please see [this manual](https://github.com/giampaolo/psutil/blob/master/INSTALL.rst) for further help. Furthermore the script relies on features only included with Python 2.7, so please make sure to have a recent Python installation available.
