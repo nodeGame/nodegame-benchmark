@@ -16,3 +16,4 @@ node_modules
 ~*
 _*
 \#*
+experiment_stats/experiment_config.json
