@@ -19,7 +19,7 @@ try:
 except ImportError:
     found_psutil = False
     print("Was not able to import psutil. Please install it via `pip install "
-          "psutil`.\nThe experiment will run, but it won't be able to extract "
+          "psutil`.\nThe benchmark will run, but it won't be able to extract "
           "CPU or memory metrics.\n", file=sys.stderr)
 else:
     found_psutil = True
@@ -86,13 +86,13 @@ def run_launcher(cfg):
     """ Executes `node launcher.js` from the right cwd and logs stdout and
     stderr to a previously defined folder.
     """
-    stdout_log = os.path.join(cfg['exp_log_dir'],
-                              'experiment_{0}_stdout.log'.
-                              format(cfg['exp_time']))
+    stdout_log = os.path.join(cfg['benchmark_log_dir'],
+                              'benchmark_{0}_stdout.log'.
+                              format(cfg['benchmark_time']))
 
-    stderr_log = os.path.join(cfg['exp_log_dir'],
-                              'experiment_{0}_stderr.log'.
-                              format(cfg['exp_time']))
+    stderr_log = os.path.join(cfg['benchmark_log_dir'],
+                              'benchmark_{0}_stderr.log'.
+                              format(cfg['benchmark_time']))
 
     with open(stdout_log, 'a') as f_out, open(stderr_log, 'a') as f_err:
         node_proc = subprocess.Popen(['node', cfg['launcher_file']],
@@ -194,23 +194,23 @@ def parse_server_msg_file(msg_file, is_reliable):
 
 def main():
     # Define ArgumentParser and declare all needed command line arguments
-    parser = ArgumentParser(description='Execute nodegame experiment and write'
-                            ' experiment data to csv file.')
+    parser = ArgumentParser(description='Execute nodegame benchmark and write'
+                            ' benchmark data to csv file.')
 
     parser.add_argument('-c', '--config', type=str, required=True,
-                        help='Experiment configuration file in JSON format '
+                        help='Benchmark configuration file in JSON format '
                         'containing variables that likely do not change '
-                        'between experiments.')
+                        'between benchmarks.')
 
     parser.add_argument('-n', '--num_games', type=int, nargs='+',
                         required=True, help='Number of simultaneous games to '
-                        'consider for the experiment, can be a list.')
+                        'consider for the benchmark, can be a list.')
 
     parser.add_argument('-r', '--reliable', action='store_true',
                         help='Boolean flag to turn on reliable messaging.')
 
     parser.add_argument('-t', '--timeouts', type=int, nargs='+',
-                        help='Timeouts to consider for the experiment when '
+                        help='Timeouts to consider for the benchmark when '
                         'reliable messaging is used, can be a list.')
 
     args = parser.parse_args()
@@ -230,23 +230,23 @@ def main():
     write_sio_transports(cfg)
 
     # record the current unix time in micro seconds and store it in cfg
-    cfg['exp_time'] = int(time.time() * 10**6)
+    cfg['benchmark_time'] = int(time.time() * 10**6)
 
     # construct metrics.csv file name
     csv_metrics_file = os.path.join(cfg['csv_out_dir'],
-                                    'experiment_{0}_metrics.csv'.
-                                    format(cfg['exp_time']))
+                                    'benchmark_{0}_metrics.csv'.
+                                    format(cfg['benchmark_time']))
 
     # construct messages.csv file name
     csv_msg_file = os.path.join(cfg['csv_out_dir'],
-                                'experiment_{0}_messages.csv'.
-                                format(cfg['exp_time']))
+                                'benchmark_{0}_messages.csv'.
+                                format(cfg['benchmark_time']))
 
     with open(csv_metrics_file, 'w') as csv_metrics, \
          open(csv_msg_file, 'w') as csv_msg:
         metrics_names = [
             "id", "machine", "num_conns", "is_reliable", "timeout",
-            "exp_ret_code", "test_ret_code", "cpu_time_user",
+            "benchmark_ret_code", "test_ret_code", "cpu_time_user",
             "cpu_time_system", "mem_info_rss", "mem_info_vms",
             "avg_client_time", "avg_server_time"
         ]
@@ -285,9 +285,9 @@ def main():
 
                 proc = run_launcher(cfg)
                 if found_psutil:
-                    ret_exp, cpu, mem, conns = get_process_metrics(proc)
+                    ret_benchmark, cpu, mem, conns = get_process_metrics(proc)
                 else:
-                    ret_exp = proc.wait()
+                    ret_benchmark = proc.wait()
 
                 ret_test = run_test(cfg)
 
@@ -298,13 +298,13 @@ def main():
                     msg_counter = \
                         parse_server_msg_file(server_msg, args.reliable)
 
-                exp_metrics = {
+                benchmark_metrics = {
                     'id': run_time,
                     'machine': platform.platform(),
                     'num_conns': num_games,
                     'is_reliable': bool(args.reliable),
                     'timeout': timeout,
-                    'exp_ret_code': ret_exp,
+                    'benchmark_ret_code': ret_benchmark,
                     'test_ret_code': ret_test,
                     'cpu_time_user':
                         time_fmt(cpu[0]) if found_psutil else 'N/A',
@@ -320,7 +320,7 @@ def main():
                         time_fmt(avg_server_time) if args.reliable else 'N/A'
                 }
 
-                metrics_writer.writerow(exp_metrics)
+                metrics_writer.writerow(benchmark_metrics)
 
                 msg_counter["id"] = run_time
                 # we manually set not occurring counts to 0 to avoid empty
