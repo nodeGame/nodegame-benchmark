@@ -4,16 +4,18 @@ Benchmark and Testing for nodeGame.
 
 ## Overview
 
-Reads settings from configuration, starts the nodeGame server,
-connects phantoms to the desired channel, compute statistics about the
-number and timing of messages exchanged, and also statistics about CPU
-and memory use if the dependency `psutil` is installed. 
+The benchmark script reads settings from a config file, starts the
+nodeGame server, connects a number of phantoms to the specified
+channel and let them play.
 
-All statistics are saved into csv files, as specified in the settings.
+While playing, the script collects statistics about the number and the
+timing of all exchanged messages, and also about CPU and memory usage
+(if the dependency `psutil` is installed).
 
-When a gameover message is intercepted, any automated test defined by
-the game in the package.json file are going to be run, and results are
-displayed to the user.
+When all games are finished, all statistics are saved into csv files,
+as specified in the settings. If an automated test script was defined
+by the game in the package.json file, such a test-script will executed
+and the results displayed on screen.
 
 
 ## Usage
