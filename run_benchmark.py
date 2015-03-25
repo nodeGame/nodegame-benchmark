@@ -63,6 +63,18 @@ def get_cmd_args():
     return args
 
 
+def expand_user_in_cfg(cfg):
+    """ Iterate over all options in both the 'Directories' and 'Files' sections
+    and expand the user variable"""
+    for dir_option in cfg.options('Directories'):
+        cfg.set('Directories', dir_option,
+                os.path.expanduser(cfg.get('Directories', dir_option)))
+
+    for file_option in cfg.options('Files'):
+        cfg.set('Files', file_option,
+                os.path.expanduser(cfg.get('Files', file_option)))
+
+
 # Record the current Unix time in micro seconds.
 # This is used to uniquely identify the benchmark.
 BENCHMARK_TIME = int(time.time() * 10**6)
@@ -287,6 +299,8 @@ def main():
         # make the config options case sensitive
         cfg.optionxform = str
         cfg.readfp(cfg_fp)
+
+    expand_user_in_cfg(cfg)
 
     # construct metrics.csv file name
     csv_metrics_file = \
