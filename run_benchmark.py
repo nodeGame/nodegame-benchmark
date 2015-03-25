@@ -78,6 +78,8 @@ def expand_user_in_cfg(cfg):
 # Record the current Unix time in micro seconds.
 # This is used to uniquely identify the benchmark.
 BENCHMARK_TIME = int(time.time() * 10**6)
+
+
 def get_benchmark_filename(folder, suffix, ext):
     """ Utility function to create benchmark filenames with timestamp included.
     """
@@ -88,7 +90,7 @@ def get_benchmark_filename(folder, suffix, ext):
 def write_launcher_settings(settings_file, settings):
     with open(settings_file, 'w') as settings_fp:
         settings_str = ",\n".join(["    {}: {}".format(k, v)
-                                  for (k,v) in settings])
+                                  for (k, v) in settings])
         settings_fp.write("module.exports = {{\n{}\n}};\n"
                           .format(settings_str))
 
@@ -99,10 +101,10 @@ def write_timeout_to_client_vars(cfg, reliable, timeout):
     only takes effect if reliable == True.
     """
     regex_reliable = re.compile(r'({0})\s*=\s*(true|false)'.format(
-                                cfg.get('Client Variables','rel_msg_var')))
+                                cfg.get('Client Variables', 'rel_msg_var')))
 
     regex_retry = re.compile(r'({0})\s*=\s*\d+'.format(
-                             cfg.get('Client Variables','rel_retry_var')))
+                             cfg.get('Client Variables', 'rel_retry_var')))
 
     # We iterate through the client variable file and modify it in-place.
     # In this case everything written to stdout will be redirected to the file
@@ -164,8 +166,8 @@ def run_launcher(cfg):
 
     with open(stdout_log, 'a') as f_out, open(stderr_log, 'a') as f_err:
         proc = subprocess.Popen(['node', cfg.get('Files', 'launcher_file')],
-                                 cwd=cfg.get('Directories', 'launcher_cwd'),
-                                 stdout=f_out, stderr=f_err)
+                                cwd=cfg.get('Directories', 'launcher_cwd'),
+                                stdout=f_out, stderr=f_err)
 
         return proc
 
@@ -332,7 +334,7 @@ def main():
 
     # open csv files for writing
     with open(csv_metrics_file, 'w') as csv_metrics, \
-         open(csv_msg_file, 'w') as csv_msg:
+            open(csv_msg_file, 'w') as csv_msg:
 
         # define the respective csv writers and write the header rows
         metrics_writer = csv.DictWriter(csv_metrics, fieldnames=metrics_names)
