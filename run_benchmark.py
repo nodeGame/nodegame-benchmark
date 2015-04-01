@@ -36,11 +36,15 @@ def get_cmd_args():
                         'between benchmarks.')
 
     parser.add_argument('-n', '--num_games', type=int, nargs='+',
-                        required=True, help='Number of simultaneous games to '
-                        'consider for the benchmark, can be a list.')
+                        help='Number of simultaneous games to consider for '
+                        'the benchmark, can be a list.')
 
     parser.add_argument('-r', '--reliable', action='store_true',
                         help='Boolean flag to turn on reliable messaging.')
+
+    parser.add_argument('-nr', '--no_run', action='store_true',
+                        help='Boolean flag to disable launching the game. '
+                        'Will just process existing log files.')
 
     parser.add_argument('-t', '--timeouts', type=int, nargs='+',
                         help='Timeouts to consider for the benchmark when '
@@ -48,11 +52,17 @@ def get_cmd_args():
 
     args = parser.parse_args()
 
-    # Manually check dependency of reliable on timeouts
-    if args.reliable and not args.timeouts:
-        print('Error: --timeouts needs to be specified when reliable messaging'
-              ' is activated.', file=sys.stderr)
-        sys.exit(1)
+    # Manually check dependency between command line arguments
+    if not args.no_run:
+        if not args.num_games:
+            print('Error: --num_games needs to be specified when a benchmark '
+                  'is run.', file=sys.stderr)
+            sys.exit(1)
+
+        if args.reliable and not args.timeouts:
+            print('Error: --timeouts needs to be specified when reliable '
+                  'messaging is activated.', file=sys.stderr)
+            sys.exit(1)
 
     # Make sure we have a default value for args.timeouts. This is important
     # because we are iterating over it, even though the actual value does not
@@ -305,9 +315,12 @@ def main():
     expand_user_in_cfg(cfg)
 
     # construct metrics.csv file name
-    csv_metrics_file = \
-        get_benchmark_filename(cfg.get('Directories', 'csv_dir'),
-                               'metrics', 'csv')
+    if args.no_run:
+        csv_metrics_file = os.devnull
+    else:
+        csv_metrics_file = \
+            get_benchmark_filename(cfg.get('Directories', 'csv_dir'),
+                                   'metrics', 'csv')
 
     # construct messages.csv file name
     csv_msg_file = \
@@ -342,6 +355,28 @@ def main():
 
         msg_writer = csv.DictWriter(csv_msg, fieldnames=msg_names)
         msg_writer.writeheader()
+        msg_file = os.path.join(cfg.get("Directories", "msg_log_dir"),
+                                cfg.get("Files", "server_msg_file"))
+
+        if args.no_run:
+            if args.reliable:
+                msg_counter, avg_client_time, avg_server_time = \
+                    parse_server_msg_file(msg_file, args.reliable)
+            else:
+                msg_counter = \
+                    parse_server_msg_file(msg_file, args.reliable)
+
+            # add 'id' field to the message counter
+            msg_counter["id"] = BENCHMARK_TIME
+            # we manually set not occurring counts to 0 to avoid empty
+            # strings in the csv
+            for msg_name in msg_names:
+                if msg_name not in msg_counter:
+                    msg_counter[msg_name] = 0
+
+            # finally write the message statistics
+            msg_writer.writerow(msg_counter)
+            return
 
         # iterate over the number of games
         for num_games in args.num_games:
@@ -354,9 +389,6 @@ def main():
             # iterate over the specified timeouts
             for timeout in args.timeouts:
                 write_timeout_to_client_vars(cfg, bool(args.reliable), timeout)
-                msg_file = os.path.join(cfg.get("Directories", "msg_log_dir"),
-                                        cfg.get("Files", "server_msg_file"))
-
                 # we try to delete the existing file, if this fails it means
                 # it did not exist in the first place, so we can just continue
                 try:
