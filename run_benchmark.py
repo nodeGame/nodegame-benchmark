@@ -35,9 +35,9 @@ def get_cmd_args():
                         'containing variables that likely do not change '
                         'between benchmarks.')
 
-    parser.add_argument('-n', '--num_games', type=int, nargs='+',
-                        help='Number of simultaneous games to consider for '
-                        'the benchmark, can be a list.')
+    parser.add_argument('-n', '--num_conns', type=int, nargs='+',
+                        help='Number of simultaneous connections to consider '
+                        'for the benchmark, can be a list.')
 
     parser.add_argument('-r', '--reliable', action='store_true',
                         help='Boolean flag to turn on reliable messaging.')
@@ -54,8 +54,8 @@ def get_cmd_args():
 
     # Manually check dependency between command line arguments
     if not args.no_run:
-        if not args.num_games:
-            print('Error: --num_games needs to be specified when a benchmark '
+        if not args.num_conns:
+            print('Error: --num_conns needs to be specified when a benchmark '
                   'is run.', file=sys.stderr)
             sys.exit(1)
 
@@ -175,7 +175,8 @@ def run_launcher(cfg):
                                 "exist.".format(launcher_cwd))
 
     with open(stdout_log, 'a') as f_out, open(stderr_log, 'a') as f_err:
-        proc = subprocess.Popen(['node', cfg.get('Files', 'launcher_file')],
+        proc = subprocess.Popen(['node', cfg.get('Files', 'launcher_file'),
+                                cfg.get('General Settings', 'game')],
                                 cwd=cfg.get('Directories', 'launcher_cwd'),
                                 stdout=f_out, stderr=f_err)
 
@@ -378,11 +379,11 @@ def main():
             msg_writer.writerow(msg_counter)
             return
 
-        # iterate over the number of games
-        for num_games in args.num_games:
-            # set the current number of games in the cfg object and write it
-            # to the launcher settings file
-            cfg.set('Launcher Settings', 'numGames', str(num_games))
+        # iterate over the number of connections
+        for num_conns in args.num_conns:
+            # set the current number of connections in the cfg object and write
+            # it to the launcher settings file
+            cfg.set('Launcher Settings', 'numPlayers', str(num_conns))
             write_launcher_settings(cfg.get('Files', 'launcher_settings_file'),
                                     cfg.items('Launcher Settings'))
 
@@ -402,7 +403,7 @@ def main():
                 # print information about the current run configuration to
                 # standard output
                 print ("Number of Connections: {}, Reliable: {}, Timeout: {}"
-                       .format(num_games, bool(args.reliable), timeout))
+                       .format(num_conns, bool(args.reliable), timeout))
 
                 # start the launcher process
                 launcher = run_launcher(cfg)
@@ -438,7 +439,7 @@ def main():
                 benchmark_metrics = {
                     'id': run_timestamp,
                     'machine': platform.platform(),
-                    'num_conns': num_games,
+                    'num_conns': num_conns,
                     'is_reliable': bool(args.reliable),
                     'timeout': timeout if args.reliable else 'N/A',
                     'benchmark_ret_code': ret_benchmark,
