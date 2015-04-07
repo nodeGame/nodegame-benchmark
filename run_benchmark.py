@@ -105,36 +105,40 @@ def write_launcher_settings(settings_file, settings):
                           .format(settings_str))
 
 
-def write_timeout_to_client_vars(cfg, reliable, timeout):
-    """ Writes the retry timeout and the reliable boolean flag to the
-    ${client_var_file}. Note that even though timeout is written every time it
+def write_timeout_to_cfg_files(cfg, reliable, timeout):
+    """ Writes the retry timeout and the reliable boolean flag to the client
+    and server var file. Note that even though timeout is written every time it
     only takes effect if reliable == True.
     """
-    regex_reliable = re.compile(r'({0})\s*=\s*(true|false)'.format(
-                                cfg.get('Client Variables', 'rel_msg_var')))
+    for mode in ['client', 'server']:
+        var_section = '{} Variables'.format(mode.capitalize())
+        var_file = '{}_var_file'.format(mode)
 
-    regex_retry = re.compile(r'({0})\s*=\s*\d+'.format(
-                             cfg.get('Client Variables', 'rel_retry_var')))
+        re_reliable = re.compile(r'({0})\s*=\s*(true|false)'.format(
+                                 cfg.get(var_section, 'rel_msg_var')))
 
-    # We iterate through the client variable file and modify it in-place.
-    # In this case everything written to stdout will be redirected to the file
-    # we opened, hence we need to print every line.
-    for line in fileinput.input(cfg.get('Files', 'client_var_file'),
-                                inplace=True):
-        # Remove trailing whitespace
-        line = line.rstrip()
+        re_retry = re.compile(r'({0})\s*=\s*\d+'.format(
+                              cfg.get(var_section, 'rel_retry_var')))
 
-        # If the current line matches the reliable regex, do the appropriate
-        # substitution. We convert reliable to lower case, because booleans
-        # are uppercase in python (True, False vs. true, false).
-        if regex_reliable.search(line):
-            print(regex_reliable.sub(r'\1 = ' + str(reliable).lower(), line))
-        # Else if it matches the retry variable regex, do another substitution.
-        elif regex_retry.search(line):
-            print(regex_retry.sub(r'\1 = ' + str(timeout), line))
-        # Else print the original line.
-        else:
-            print(line)
+        # We iterate through the client variable file and modify it in-place.
+        # In this case everything written to stdout will be redirected to the
+        # file we opened, hence we need to print every line.
+        for line in fileinput.input(cfg.get('Files', var_file), inplace=True):
+            # Remove trailing whitespace
+            line = line.rstrip()
+
+            # If the current line matches the reliable regular expression, do
+            # the appropriate substitution. We convert reliable to lower case,
+            # because booleans are uppercase in python (e.g. True vs. true).
+            if re_reliable.search(line):
+                print(re_reliable.sub(r'\1 = ' + str(reliable).lower(), line))
+            # Else if it matches the retry variable regular expression, do
+            # another substitution.
+            elif re_retry.search(line):
+                print(re_retry.sub(r'\1 = ' + str(timeout), line))
+            # Else print the original line.
+            else:
+                print(line)
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -151,6 +155,22 @@ def time_fmt(time):
     """ Utilty function to convert duration to human readable format.
     Follows default format of the Unix `time` command. """
     return "{:.0f}m{:.3f}s".format(time // 60, time % 60)
+
+
+def build_nodegame(cfg):
+    """ Routine to build nodegame, saves the build log into a separate file.
+    Warns if there was an error. """
+    build_log = get_benchmark_filename(cfg.get('Directories', 'log_dir'),
+                                       'build', 'log')
+    with open(build_log, 'a') as b_log:
+        retcode = subprocess.call(['node', 'bin/make.js', 'build-client',
+                                   '-a', '-o', 'nodegame-full'],
+                                  cwd=cfg.get('Directories', 'server_dir'),
+                                  stdout=b_log, stderr=b_log)
+
+        if retcode:
+            print("Warning: The nodegame build had a non-zero exit code.",
+                  file=sys.stderr)
 
 
 def run_launcher(cfg):
@@ -289,16 +309,16 @@ def parse_server_msg_file(msg_file, is_reliable):
             client_server_times, datetime.timedelta(0)
         ).total_seconds() / len(client_server_times)
 
-    if len(server_cleint_times) == 0:
+    if len(server_client_times) == 0:
         print("Warning: Could not record time deltas for server -> client "
               "messages.", file=sys.stderr)
-        avg_server_cleint_time = 0.0
+        avg_server_client_time = 0.0
     else:
         avg_server_client_time = sum(
             server_client_times, datetime.timedelta(0)
         ).total_seconds() / len(server_client_times)
 
-    print("The average delay to deliver a message was of {:.0f} milliseconds."
+    print("The average delay to deliver a message was {:.0f} milliseconds."
           .format(avg_server_client_time * 1000))
     return msg_counter, avg_client_server_time, avg_server_client_time
 
@@ -389,7 +409,7 @@ def main():
 
             # iterate over the specified timeouts
             for timeout in args.timeouts:
-                write_timeout_to_client_vars(cfg, bool(args.reliable), timeout)
+                write_timeout_to_cfg_files(cfg, bool(args.reliable), timeout)
                 # we try to delete the existing file, if this fails it means
                 # it did not exist in the first place, so we can just continue
                 try:
@@ -397,13 +417,17 @@ def main():
                 except OSError:
                     pass
 
+                print("Building Client")
+                build_nodegame(cfg)
+
                 # run_timestamp serves as the current run id
                 run_timestamp = int(time.time() * 10**6)
 
                 # print information about the current run configuration to
                 # standard output
-                print ("Number of Connections: {}, Reliable: {}, Timeout: {}"
-                       .format(num_conns, bool(args.reliable), timeout))
+                print("Running Benchmark")
+                print("Number of Connections: {}, Reliable: {}, Timeout: {}"
+                      .format(num_conns, bool(args.reliable), timeout))
 
                 # start the launcher process
                 launcher = run_launcher(cfg)
