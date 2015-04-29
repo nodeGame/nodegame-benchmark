@@ -247,7 +247,7 @@ def parse_server_msg_file(msg_file, is_reliable):
 
             # parse the resulting json strings
             winstonMsg = json.loads(message)
-            gameMsg = json.loads(winstonMsg['message'])
+            gameMsg = winstonMsg['GameMsg']
 
             # increment corresponding target counter
             msg_counter[gameMsg['target']] += 1
