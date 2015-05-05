@@ -208,6 +208,9 @@ def get_process_metrics(proc):
     process started via Popen(). Also obtains the return code.
     """
     p = psutil.Process(proc.pid)
+    max_cpu = [0, 0]
+    max_mem = [0, 0]
+
     while proc.poll() is None:
         try:
             cpu = list(p.cpu_times())
@@ -224,12 +227,18 @@ def get_process_metrics(proc):
                 mem[0] += c_mem[0]
                 mem[1] += c_mem[1]
 
+            if max_cpu[0] < cpu[0]:
+                max_cpu = cpu
+
+            if max_mem[0] < mem[0]:
+                max_mem = mem
+
         except psutil.AccessDenied:
             pass
         time.sleep(1)
     retcode = proc.wait()
 
-    return retcode, cpu, mem, conns
+    return retcode, max_cpu, max_mem, conns
 
 
 def run_test(cfg):
