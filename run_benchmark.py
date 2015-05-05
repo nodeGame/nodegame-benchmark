@@ -208,12 +208,23 @@ def get_process_metrics(proc):
     process started via Popen(). Also obtains the return code.
     """
     p = psutil.Process(proc.pid)
-    while proc.poll() == None:
+    while proc.poll() is None:
         try:
-            cpu = p.cpu_times()
-            mem = p.memory_info()
+            cpu = list(p.cpu_times())
+            mem = list(p.memory_info())
             conns = p.connections('all')
-        except AccessDenied:
+
+            for child in p.children(recursive=True):
+                c_cpu = list(child.cpu_times())
+                c_mem = list(child.memory_info())
+
+                cpu[0] += c_cpu[0]
+                cpu[1] += c_cpu[1]
+
+                mem[0] += c_mem[0]
+                mem[1] += c_mem[1]
+
+        except psutil.AccessDenied:
             pass
         time.sleep(1)
     retcode = proc.wait()
@@ -264,8 +275,8 @@ def parse_server_msg_file(msg_file, is_reliable):
             created = datetime.datetime.strptime(gameMsg['created'],
                                                  '%Y-%m-%dT%H:%M:%S.%fZ')
 
-            time = datetime.datetime.strptime(winstonMsg['timestamp'],
-                                              '%Y-%m-%dT%H:%M:%S.%fZ')
+            timestamp = datetime.datetime.strptime(winstonMsg['timestamp'],
+                                                   '%Y-%m-%dT%H:%M:%S.%fZ')
 
             # initialize timestamps
             if msg_id not in timestamps['client']:
@@ -277,15 +288,15 @@ def parse_server_msg_file(msg_file, is_reliable):
             # server
             if gameMsg['target'] == 'ACK':
                 if gameMsg['to'] == 'SERVER':
-                    timestamps['server'][gameMsg['text']][1] = time
+                    timestamps['server'][gameMsg['text']][1] = timestamp
                 elif gameMsg['from'] == 'ultimatum':
-                    timestamps['client'][gameMsg['text']][1] = time
+                    timestamps['client'][gameMsg['text']][1] = timestamp
 
             else:
                 if gameMsg['to'] == 'SERVER':
                     timestamps['client'][msg_id][0] = created
                 elif gameMsg['from'] == 'ultimatum':
-                    timestamps['server'][msg_id][0] = time
+                    timestamps['server'][msg_id][0] = timestamp
 
     # simply return counter if no reliable messaging
     if not is_reliable:
@@ -327,11 +338,11 @@ def main():
     args = get_cmd_args()
 
     with open(args.config) as cfg_fp:
-        cfg = configparser.SafeConfigParser(
-                interpolation=configparser.ExtendedInterpolation())
+        cfg = configparser.ConfigParser(interpolation=configparser.
+                                        ExtendedInterpolation())
         # make the config options case sensitive
         cfg.optionxform = str
-        cfg.readfp(cfg_fp)
+        cfg.read_file(cfg_fp)
 
     expand_user_in_cfg(cfg)
 
