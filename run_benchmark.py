@@ -186,7 +186,7 @@ def run_launcher(cfg):
     stderr_log = get_benchmark_filename(cfg.get('Directories', 'log_dir'),
                                         'stderr', 'log')
 
-    print('Logging stdout and stderr:\n{}\n{}'.format(stdout_log, stdout_log))
+    print('Logging stdout and stderr:\n{}\n{}'.format(stdout_log, stderr_log))
     launcher_file = cfg.get('Files', 'launcher_file')
     if not os.path.exists(launcher_file):
         raise FileNotFoundError("$[Files] launcher_file = {} does not "
