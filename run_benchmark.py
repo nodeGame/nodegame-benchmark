@@ -143,7 +143,7 @@ def write_timeout_to_cfg_files(cfg, reliable, timeout):
 
 def sizeof_fmt(num, suffix='B'):
     """ Utility function to convert byte amounts to human readable format.
-    Taken from http://stackoverflow.com/a/1094933/2528077"""
+    Taken from http://stackoverflow.com/a/1094933/2528077 """
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
@@ -151,10 +151,10 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def time_fmt(time):
-    """ Utilty function to convert duration to human readable format.
-    Follows default format of the Unix `time` command. """
-    return "{:.0f}m{:.3f}s".format(time // 60, time % 60)
+def time_fmt(seconds):
+    """ Utilty function to convert duration to human readable format. Follows
+    default format of the Unix `time` command. """
+    return "{:.0f}m{:.3f}s".format(seconds // 60, seconds % 60)
 
 
 def build_nodegame(cfg):
@@ -162,6 +162,8 @@ def build_nodegame(cfg):
     Warns if there was an error. """
     build_log = get_benchmark_filename(cfg.get('Directories', 'log_dir'),
                                        'build', 'log')
+
+    print('Build Log:\n{}\n'.format(build_log))
     with open(build_log, 'a') as b_log:
         retcode = subprocess.call(['node', 'bin/make.js', 'build-client',
                                    '-a', '-o', 'nodegame-full'],
@@ -184,6 +186,7 @@ def run_launcher(cfg):
     stderr_log = get_benchmark_filename(cfg.get('Directories', 'log_dir'),
                                         'stderr', 'log')
 
+    print('Logging stdout and stderr:\n{}\n{}'.format(stdout_log, stdout_log))
     launcher_file = cfg.get('Files', 'launcher_file')
     if not os.path.exists(launcher_file):
         raise FileNotFoundError("$[Files] launcher_file = {} does not "
@@ -205,11 +208,11 @@ def run_launcher(cfg):
 
 def get_process_metrics(proc):
     """ Extracts CPU times, memory infos and connection infos about a given
-    process started via Popen(). Also obtains the return code.
-    """
+    process started via Popen(). Also obtains the return code. """
     p = psutil.Process(proc.pid)
     max_cpu = [0, 0]
     max_mem = [0, 0]
+    conns = []
 
     while proc.poll() is None:
         try:
@@ -251,8 +254,7 @@ def parse_server_msg_file(msg_file, is_reliable):
     """ Parses the server message log file. Extract metrics about the total
     number of messages and the break down according to type. In addition
     computes the average delay of a message round-trip if reliable messaging is
-    enabled.
-    """
+    enabled. """
 
     # define a message counter and a timestamps dictionary for both client and
     # server
@@ -266,25 +268,25 @@ def parse_server_msg_file(msg_file, is_reliable):
             msg_counter['total'] += 1
 
             # parse the resulting json strings
-            winstonMsg = json.loads(message)
-            gameMsg = winstonMsg['GameMsg']
+            winston_msg = json.loads(message)
+            game_msg = winston_msg['GameMsg']
 
             # increment corresponding target counter
-            msg_counter[gameMsg['target']] += 1
+            msg_counter[game_msg['target']] += 1
 
             # skip the rest if reliable messaging is not activated
             if not is_reliable:
                 continue
 
             # extract message id
-            msg_id = str(gameMsg['id'])
+            msg_id = str(game_msg['id'])
 
             # parse JavaScript Date.prototype.toISOString() into a Python
             # datetime object
-            created = datetime.datetime.strptime(gameMsg['created'],
+            created = datetime.datetime.strptime(game_msg['created'],
                                                  '%Y-%m-%dT%H:%M:%S.%fZ')
 
-            timestamp = datetime.datetime.strptime(winstonMsg['timestamp'],
+            timestamp = datetime.datetime.strptime(winston_msg['timestamp'],
                                                    '%Y-%m-%dT%H:%M:%S.%fZ')
 
             # initialize timestamps
@@ -295,16 +297,16 @@ def parse_server_msg_file(msg_file, is_reliable):
 
             # different between ACK and normal messages for both client and
             # server
-            if gameMsg['target'] == 'ACK':
-                if gameMsg['to'] == 'SERVER':
-                    timestamps['server'][gameMsg['text']][1] = timestamp
-                elif gameMsg['from'] == 'ultimatum':
-                    timestamps['client'][gameMsg['text']][1] = timestamp
+            if game_msg['target'] == 'ACK':
+                if game_msg['to'] == 'SERVER':
+                    timestamps['server'][game_msg['text']][1] = timestamp
+                elif game_msg['from'] == 'ultimatum':
+                    timestamps['client'][game_msg['text']][1] = timestamp
 
             else:
-                if gameMsg['to'] == 'SERVER':
+                if game_msg['to'] == 'SERVER':
                     timestamps['client'][msg_id][0] = created
-                elif gameMsg['from'] == 'ultimatum':
+                elif game_msg['from'] == 'ultimatum':
                     timestamps['server'][msg_id][0] = timestamp
 
     # simply return counter if no reliable messaging
@@ -368,6 +370,7 @@ def main():
         get_benchmark_filename(cfg.get('Directories', 'csv_dir'),
                                'messages', 'csv')
 
+    print('CSV files:\n{}\n{}\n'.format(csv_metrics_file, csv_msg_file))
     # this defines the metrics we want to record
     metrics_names = [
         "id", "machine", "num_conns", "is_reliable", "timeout",
@@ -485,21 +488,21 @@ def main():
                     'machine': platform.platform(),
                     'num_conns': num_conns,
                     'is_reliable': bool(args.reliable),
-                    'timeout': timeout if args.reliable else 'N/A',
+                    'timeout': timeout if args.reliable else 'NA',
                     'benchmark_ret_code': ret_benchmark,
                     'test_ret_code': ret_test,
                     'cpu_time_user':
-                        time_fmt(cpu[0]) if found_psutil else 'N/A',
+                        time_fmt(cpu[0]) if found_psutil else 'NA',
                     'cpu_time_system':
-                        time_fmt(cpu[1]) if found_psutil else 'N/A',
+                        time_fmt(cpu[1]) if found_psutil else 'NA',
                     'mem_info_rss':
-                        sizeof_fmt(mem[0]) if found_psutil else 'N/A',
+                        sizeof_fmt(mem[0]) if found_psutil else 'NA',
                     'mem_info_vms':
-                        sizeof_fmt(mem[1]) if found_psutil else 'N/A',
+                        sizeof_fmt(mem[1]) if found_psutil else 'NA',
                     'avg_client_time':
-                        time_fmt(avg_client_time) if args.reliable else 'N/A',
+                        time_fmt(avg_client_time) if args.reliable else 'NA',
                     'avg_server_time':
-                        time_fmt(avg_server_time) if args.reliable else 'N/A'
+                        time_fmt(avg_server_time) if args.reliable else 'NA'
                 }
 
                 metrics_writer.writerow(benchmark_metrics)
