@@ -468,6 +468,7 @@ def main():
                           "Please have a look at the log,\nthe benchmark id is"
                           " {}.".format(BENCHMARK_TIME), file=sys.stderr)
 
+                time.sleep(1)
                 ret_test = run_test(cfg)
                 if ret_test:
                     print("Warning: The test run had a non-zero exit code.",
