@@ -236,7 +236,7 @@ def get_process_metrics(proc):
             if max_mem[0] < mem[0]:
                 max_mem = mem
 
-        except psutil.AccessDenied:
+        except (psutil.AccessDenied, psutil.NoSuchProcess):
             pass
         time.sleep(1)
     retcode = proc.wait()
