@@ -1,7 +1,7 @@
 {
     "name": "nodegame-benchmark"
-  , "description": "Benchmark package for nodeGame"
-  , "version": "0.0.1"
+  , "description": "Benchmark the performance of a nodeGame server"
+  , "version": "0.1.0"
   , "main" : "index.js"
   , "homepage": "http://nodegame.org"
   , "author": "Stefano Balietti <futur.dorko@gmail.com>"
@@ -16,7 +16,7 @@
   , "dependencies": {
       "phantomjs": ">= 1.9.2"
     }
-  , "engines": { "node": ">= 0.6.11" }
+  , "engines": { "node": ">= 0.10.0" }
   , "licenses": [
     { "type": "MIT" }
   ]

@@ -1,0 +1,22 @@
+{
+    "launcher_cwd": "/home/stefano/www/ngtest/",
+    "launcher_file": "games/ultimatum/test/launcher-autoplay.js",
+
+    "benchmark_log_dir": "./log/",
+    "msg_log_dir": "/home/stefano/www/ngtest/log/",
+    "server_msg_file": "messages.log",
+
+    "game": "ultimatum",
+    "csv_out_dir": "/home/stefano/www/ngtest/games/ultimatum/data/",
+    "test_cwd": "/home/stefano/www/ngtest/games/ultimatum/",
+
+    "game_settings_file": "/home/stefano/www/ngtest/games/ultimatum/test/settings.js",
+    "num_games_kwd": "numGames",
+    "sio_transports_kwd": "sioTransports",
+    "sio_transports": ["websocket", "flashsocket", "htmlfile", "xhr-polling", "jsonp-polling"],
+
+    "variables_file": "/home/stefano/www/ngtest/node_modules/nodegame-client/lib/modules/variables.js",
+    "rel_msgs_var": "k.reliableMessaging",
+    "rel_retry_var": "k.reliableRetryInterval",
+    "default_timeout": 4000
+}
