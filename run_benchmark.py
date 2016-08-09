@@ -35,12 +35,16 @@ def get_cmd_args():
                         'containing variables that likely do not change '
                         'between benchmarks.')
 
-    parser.add_argument('-n', '--num_games', type=int, nargs='+',
-                        required=True, help='Number of simultaneous games to '
-                        'consider for the benchmark, can be a list.')
+    parser.add_argument('-n', '--num_conns', type=int, nargs='+',
+                        help='Number of simultaneous connections to consider '
+                        'for the benchmark, can be a list.')
 
     parser.add_argument('-r', '--reliable', action='store_true',
                         help='Boolean flag to turn on reliable messaging.')
+
+    parser.add_argument('-nr', '--no_run', action='store_true',
+                        help='Boolean flag to disable launching the game. '
+                        'Will just process existing log files.')
 
     parser.add_argument('-t', '--timeouts', type=int, nargs='+',
                         help='Timeouts to consider for the benchmark when '
@@ -48,11 +52,17 @@ def get_cmd_args():
 
     args = parser.parse_args()
 
-    # Manually check dependency of reliable on timeouts
-    if args.reliable and not args.timeouts:
-        print('Error: --timeouts needs to be specified when reliable messaging'
-              ' is activated.', file=sys.stderr)
-        sys.exit(1)
+    # Manually check dependency between command line arguments
+    if not args.no_run:
+        if not args.num_conns:
+            print('Error: --num_conns needs to be specified when a benchmark '
+                  'is run.', file=sys.stderr)
+            sys.exit(1)
+
+        if args.reliable and not args.timeouts:
+            print('Error: --timeouts needs to be specified when reliable '
+                  'messaging is activated.', file=sys.stderr)
+            sys.exit(1)
 
     # Make sure we have a default value for args.timeouts. This is important
     # because we are iterating over it, even though the actual value does not
@@ -78,6 +88,8 @@ def expand_user_in_cfg(cfg):
 # Record the current Unix time in micro seconds.
 # This is used to uniquely identify the benchmark.
 BENCHMARK_TIME = int(time.time() * 10**6)
+
+
 def get_benchmark_filename(folder, suffix, ext):
     """ Utility function to create benchmark filenames with timestamp included.
     """
@@ -88,46 +100,50 @@ def get_benchmark_filename(folder, suffix, ext):
 def write_launcher_settings(settings_file, settings):
     with open(settings_file, 'w') as settings_fp:
         settings_str = ",\n".join(["    {}: {}".format(k, v)
-                                  for (k,v) in settings])
+                                  for (k, v) in settings])
         settings_fp.write("module.exports = {{\n{}\n}};\n"
                           .format(settings_str))
 
 
-def write_timeout_to_client_vars(cfg, reliable, timeout):
-    """ Writes the retry timeout and the reliable boolean flag to the
-    ${client_var_file}. Note that even though timeout is written every time it
+def write_timeout_to_cfg_files(cfg, reliable, timeout):
+    """ Writes the retry timeout and the reliable boolean flag to the client
+    and server var file. Note that even though timeout is written every time it
     only takes effect if reliable == True.
     """
-    regex_reliable = re.compile(r'({0})\s*=\s*(true|false)'.format(
-                                cfg.get('Client Variables','rel_msg_var')))
+    for mode in ['client', 'server']:
+        var_section = '{} Variables'.format(mode.capitalize())
+        var_file = '{}_var_file'.format(mode)
 
-    regex_retry = re.compile(r'({0})\s*=\s*\d+'.format(
-                             cfg.get('Client Variables','rel_retry_var')))
+        re_reliable = re.compile(r'({0})\s*=\s*(true|false)'.format(
+                                 cfg.get(var_section, 'rel_msg_var')))
 
-    # We iterate through the client variable file and modify it in-place.
-    # In this case everything written to stdout will be redirected to the file
-    # we opened, hence we need to print every line.
-    for line in fileinput.input(cfg.get('Files', 'client_var_file'),
-                                inplace=True):
-        # Remove trailing whitespace
-        line = line.rstrip()
+        re_retry = re.compile(r'({0})\s*=\s*\d+'.format(
+                              cfg.get(var_section, 'rel_retry_var')))
 
-        # If the current line matches the reliable regex, do the appropriate
-        # substitution. We convert reliable to lower case, because booleans
-        # are uppercase in python (True, False vs. true, false).
-        if regex_reliable.search(line):
-            print(regex_reliable.sub(r'\1 = ' + str(reliable).lower(), line))
-        # Else if it matches the retry variable regex, do another substitution.
-        elif regex_retry.search(line):
-            print(regex_retry.sub(r'\1 = ' + str(timeout), line))
-        # Else print the original line.
-        else:
-            print(line)
+        # We iterate through the client variable file and modify it in-place.
+        # In this case everything written to stdout will be redirected to the
+        # file we opened, hence we need to print every line.
+        for line in fileinput.input(cfg.get('Files', var_file), inplace=True):
+            # Remove trailing whitespace
+            line = line.rstrip()
+
+            # If the current line matches the reliable regular expression, do
+            # the appropriate substitution. We convert reliable to lower case,
+            # because booleans are uppercase in python (e.g. True vs. true).
+            if re_reliable.search(line):
+                print(re_reliable.sub(r'\1 = ' + str(reliable).lower(), line))
+            # Else if it matches the retry variable regular expression, do
+            # another substitution.
+            elif re_retry.search(line):
+                print(re_retry.sub(r'\1 = ' + str(timeout), line))
+            # Else print the original line.
+            else:
+                print(line)
 
 
 def sizeof_fmt(num, suffix='B'):
     """ Utility function to convert byte amounts to human readable format.
-    Taken from http://stackoverflow.com/a/1094933/2528077"""
+    Taken from http://stackoverflow.com/a/1094933/2528077 """
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
@@ -135,10 +151,28 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def time_fmt(time):
-    """ Utilty function to convert duration to human readable format.
-    Follows default format of the Unix `time` command. """
-    return "{:.0f}m{:.3f}s".format(time // 60, time % 60)
+def time_fmt(seconds):
+    """ Utilty function to convert duration to human readable format. Follows
+    default format of the Unix `time` command. """
+    return "{:.0f}m{:.3f}s".format(seconds // 60, seconds % 60)
+
+
+def build_nodegame(cfg):
+    """ Routine to build nodegame, saves the build log into a separate file.
+    Warns if there was an error. """
+    build_log = get_benchmark_filename(cfg.get('Directories', 'log_dir'),
+                                       'build', 'log')
+
+    print('Build Log:\n{}\n'.format(build_log))
+    with open(build_log, 'a') as b_log:
+        retcode = subprocess.call(['node', 'bin/make.js', 'build-client',
+                                   '-a', '-o', 'nodegame-full'],
+                                  cwd=cfg.get('Directories', 'server_dir'),
+                                  stdout=b_log, stderr=b_log)
+
+        if retcode:
+            print("Warning: The nodegame build had a non-zero exit code.",
+                  file=sys.stderr)
 
 
 def run_launcher(cfg):
@@ -152,6 +186,7 @@ def run_launcher(cfg):
     stderr_log = get_benchmark_filename(cfg.get('Directories', 'log_dir'),
                                         'stderr', 'log')
 
+    print('Logging stdout and stderr:\n{}\n{}'.format(stdout_log, stderr_log))
     launcher_file = cfg.get('Files', 'launcher_file')
     if not os.path.exists(launcher_file):
         raise FileNotFoundError("$[Files] launcher_file = {} does not "
@@ -163,29 +198,50 @@ def run_launcher(cfg):
                                 "exist.".format(launcher_cwd))
 
     with open(stdout_log, 'a') as f_out, open(stderr_log, 'a') as f_err:
-        proc = subprocess.Popen(['node', cfg.get('Files', 'launcher_file')],
-                                 cwd=cfg.get('Directories', 'launcher_cwd'),
-                                 stdout=f_out, stderr=f_err)
+        proc = subprocess.Popen(['node', cfg.get('Files', 'launcher_file'),
+                                cfg.get('General Settings', 'game')],
+                                cwd=cfg.get('Directories', 'launcher_cwd'),
+                                stdout=f_out, stderr=f_err)
 
         return proc
 
 
 def get_process_metrics(proc):
     """ Extracts CPU times, memory infos and connection infos about a given
-    process started via Popen(). Also obtains the return code.
-    """
+    process started via Popen(). Also obtains the return code. """
     p = psutil.Process(proc.pid)
-    while proc.poll() == None:
+    max_cpu = [0, 0]
+    max_mem = [0, 0]
+    conns = []
+
+    while proc.poll() is None:
         try:
-            cpu = p.cpu_times()
-            mem = p.memory_info()
+            cpu = list(p.cpu_times())
+            mem = list(p.memory_info())
             conns = p.connections('all')
-        except AccessDenied:
+
+            for child in p.children(recursive=True):
+                c_cpu = list(child.cpu_times())
+                c_mem = list(child.memory_info())
+
+                cpu[0] += c_cpu[0]
+                cpu[1] += c_cpu[1]
+
+                mem[0] += c_mem[0]
+                mem[1] += c_mem[1]
+
+            if max_cpu[0] < cpu[0]:
+                max_cpu = cpu
+
+            if max_mem[0] < mem[0]:
+                max_mem = mem
+
+        except (psutil.AccessDenied, psutil.NoSuchProcess):
             pass
         time.sleep(1)
     retcode = proc.wait()
 
-    return retcode, cpu, mem, conns
+    return retcode, max_cpu, max_mem, conns
 
 
 def run_test(cfg):
@@ -198,8 +254,7 @@ def parse_server_msg_file(msg_file, is_reliable):
     """ Parses the server message log file. Extract metrics about the total
     number of messages and the break down according to type. In addition
     computes the average delay of a message round-trip if reliable messaging is
-    enabled.
-    """
+    enabled. """
 
     # define a message counter and a timestamps dictionary for both client and
     # server
@@ -213,26 +268,26 @@ def parse_server_msg_file(msg_file, is_reliable):
             msg_counter['total'] += 1
 
             # parse the resulting json strings
-            winstonMsg = json.loads(message)
-            gameMsg = json.loads(winstonMsg['message'])
+            winston_msg = json.loads(message)
+            game_msg = winston_msg['GameMsg']
 
             # increment corresponding target counter
-            msg_counter[gameMsg['target']] += 1
+            msg_counter[game_msg['target']] += 1
 
             # skip the rest if reliable messaging is not activated
             if not is_reliable:
                 continue
 
             # extract message id
-            msg_id = str(gameMsg['id'])
+            msg_id = str(game_msg['id'])
 
             # parse JavaScript Date.prototype.toISOString() into a Python
             # datetime object
-            created = datetime.datetime.strptime(gameMsg['created'],
+            created = datetime.datetime.strptime(game_msg['created'],
                                                  '%Y-%m-%dT%H:%M:%S.%fZ')
 
-            time = datetime.datetime.strptime(winstonMsg['timestamp'],
-                                              '%Y-%m-%dT%H:%M:%S.%fZ')
+            timestamp = datetime.datetime.strptime(winston_msg['timestamp'],
+                                                   '%Y-%m-%dT%H:%M:%S.%fZ')
 
             # initialize timestamps
             if msg_id not in timestamps['client']:
@@ -242,17 +297,17 @@ def parse_server_msg_file(msg_file, is_reliable):
 
             # different between ACK and normal messages for both client and
             # server
-            if gameMsg['target'] == 'ACK':
-                if gameMsg['to'] == 'SERVER':
-                    timestamps['server'][gameMsg['text']][1] = time
-                elif gameMsg['from'] == 'ultimatum':
-                    timestamps['client'][gameMsg['text']][1] = time
+            if game_msg['target'] == 'ACK':
+                if game_msg['to'] == 'SERVER':
+                    timestamps['server'][game_msg['text']][1] = timestamp
+                elif game_msg['from'] == 'ultimatum':
+                    timestamps['client'][game_msg['text']][1] = timestamp
 
             else:
-                if gameMsg['to'] == 'SERVER':
+                if game_msg['to'] == 'SERVER':
                     timestamps['client'][msg_id][0] = created
-                elif gameMsg['from'] == 'ultimatum':
-                    timestamps['server'][msg_id][0] = time
+                elif game_msg['from'] == 'ultimatum':
+                    timestamps['server'][msg_id][0] = timestamp
 
     # simply return counter if no reliable messaging
     if not is_reliable:
@@ -276,16 +331,16 @@ def parse_server_msg_file(msg_file, is_reliable):
             client_server_times, datetime.timedelta(0)
         ).total_seconds() / len(client_server_times)
 
-    if len(server_cleint_times) == 0:
+    if len(server_client_times) == 0:
         print("Warning: Could not record time deltas for server -> client "
               "messages.", file=sys.stderr)
-        avg_server_cleint_time = 0.0
+        avg_server_client_time = 0.0
     else:
         avg_server_client_time = sum(
             server_client_times, datetime.timedelta(0)
         ).total_seconds() / len(server_client_times)
 
-    print("The average delay to deliver a message was of {:.0f} milliseconds."
+    print("The average delay to deliver a message was {:.0f} milliseconds."
           .format(avg_server_client_time * 1000))
     return msg_counter, avg_client_server_time, avg_server_client_time
 
@@ -294,24 +349,28 @@ def main():
     args = get_cmd_args()
 
     with open(args.config) as cfg_fp:
-        cfg = configparser.SafeConfigParser(
-                interpolation=configparser.ExtendedInterpolation())
+        cfg = configparser.ConfigParser(interpolation=configparser.
+                                        ExtendedInterpolation())
         # make the config options case sensitive
         cfg.optionxform = str
-        cfg.readfp(cfg_fp)
+        cfg.read_file(cfg_fp)
 
     expand_user_in_cfg(cfg)
 
     # construct metrics.csv file name
-    csv_metrics_file = \
-        get_benchmark_filename(cfg.get('Directories', 'csv_dir'),
-                               'metrics', 'csv')
+    if args.no_run:
+        csv_metrics_file = os.devnull
+    else:
+        csv_metrics_file = \
+            get_benchmark_filename(cfg.get('Directories', 'csv_dir'),
+                                   'metrics', 'csv')
 
     # construct messages.csv file name
     csv_msg_file = \
         get_benchmark_filename(cfg.get('Directories', 'csv_dir'),
                                'messages', 'csv')
 
+    print('CSV files:\n{}\n{}\n'.format(csv_metrics_file, csv_msg_file))
     # this defines the metrics we want to record
     metrics_names = [
         "id", "machine", "num_conns", "is_reliable", "timeout",
@@ -332,7 +391,7 @@ def main():
 
     # open csv files for writing
     with open(csv_metrics_file, 'w') as csv_metrics, \
-         open(csv_msg_file, 'w') as csv_msg:
+            open(csv_msg_file, 'w') as csv_msg:
 
         # define the respective csv writers and write the header rows
         metrics_writer = csv.DictWriter(csv_metrics, fieldnames=metrics_names)
@@ -340,21 +399,40 @@ def main():
 
         msg_writer = csv.DictWriter(csv_msg, fieldnames=msg_names)
         msg_writer.writeheader()
+        msg_file = os.path.join(cfg.get("Directories", "msg_log_dir"),
+                                cfg.get("Files", "server_msg_file"))
 
-        # iterate over the number of games
-        for num_games in args.num_games:
-            # set the current number of games in the cfg object and write it
-            # to the launcher settings file
-            cfg.set('Launcher Settings', 'numGames', str(num_games))
+        if args.no_run:
+            if args.reliable:
+                msg_counter, avg_client_time, avg_server_time = \
+                    parse_server_msg_file(msg_file, args.reliable)
+            else:
+                msg_counter = \
+                    parse_server_msg_file(msg_file, args.reliable)
+
+            # add 'id' field to the message counter
+            msg_counter["id"] = BENCHMARK_TIME
+            # we manually set not occurring counts to 0 to avoid empty
+            # strings in the csv
+            for msg_name in msg_names:
+                if msg_name not in msg_counter:
+                    msg_counter[msg_name] = 0
+
+            # finally write the message statistics
+            msg_writer.writerow(msg_counter)
+            return
+
+        # iterate over the number of connections
+        for num_conns in args.num_conns:
+            # set the current number of connections in the cfg object and write
+            # it to the launcher settings file
+            cfg.set('Launcher Settings', 'numPlayers', str(num_conns))
             write_launcher_settings(cfg.get('Files', 'launcher_settings_file'),
                                     cfg.items('Launcher Settings'))
 
             # iterate over the specified timeouts
             for timeout in args.timeouts:
-                write_timeout_to_client_vars(cfg, bool(args.reliable), timeout)
-                msg_file = os.path.join(cfg.get("Directories", "msg_log_dir"),
-                                        cfg.get("Files", "server_msg_file"))
-
+                write_timeout_to_cfg_files(cfg, bool(args.reliable), timeout)
                 # we try to delete the existing file, if this fails it means
                 # it did not exist in the first place, so we can just continue
                 try:
@@ -362,13 +440,17 @@ def main():
                 except OSError:
                     pass
 
+                print("Building Client")
+                build_nodegame(cfg)
+
                 # run_timestamp serves as the current run id
                 run_timestamp = int(time.time() * 10**6)
 
                 # print information about the current run configuration to
                 # standard output
-                print ("Number of Connections: {}, Reliable: {}, Timeout: {}"
-                       .format(num_games, bool(args.reliable), timeout))
+                print("Running Benchmark")
+                print("Number of Connections: {}, Reliable: {}, Timeout: {}"
+                      .format(num_conns, bool(args.reliable), timeout))
 
                 # start the launcher process
                 launcher = run_launcher(cfg)
@@ -386,6 +468,7 @@ def main():
                           "Please have a look at the log,\nthe benchmark id is"
                           " {}.".format(BENCHMARK_TIME), file=sys.stderr)
 
+                time.sleep(1)
                 ret_test = run_test(cfg)
                 if ret_test:
                     print("Warning: The test run had a non-zero exit code.",
@@ -404,23 +487,23 @@ def main():
                 benchmark_metrics = {
                     'id': run_timestamp,
                     'machine': platform.platform(),
-                    'num_conns': num_games,
+                    'num_conns': num_conns,
                     'is_reliable': bool(args.reliable),
-                    'timeout': timeout if args.reliable else 'N/A',
+                    'timeout': timeout if args.reliable else 'NA',
                     'benchmark_ret_code': ret_benchmark,
                     'test_ret_code': ret_test,
                     'cpu_time_user':
-                        time_fmt(cpu[0]) if found_psutil else 'N/A',
+                        time_fmt(cpu[0]) if found_psutil else 'NA',
                     'cpu_time_system':
-                        time_fmt(cpu[1]) if found_psutil else 'N/A',
+                        time_fmt(cpu[1]) if found_psutil else 'NA',
                     'mem_info_rss':
-                        sizeof_fmt(mem[0]) if found_psutil else 'N/A',
+                        sizeof_fmt(mem[0]) if found_psutil else 'NA',
                     'mem_info_vms':
-                        sizeof_fmt(mem[1]) if found_psutil else 'N/A',
+                        sizeof_fmt(mem[1]) if found_psutil else 'NA',
                     'avg_client_time':
-                        time_fmt(avg_client_time) if args.reliable else 'N/A',
+                        time_fmt(avg_client_time) if args.reliable else 'NA',
                     'avg_server_time':
-                        time_fmt(avg_server_time) if args.reliable else 'N/A'
+                        time_fmt(avg_server_time) if args.reliable else 'NA'
                 }
 
                 metrics_writer.writerow(benchmark_metrics)
