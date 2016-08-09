@@ -169,7 +169,7 @@ optional arguments:
 
 Reads the config file and run 1 benchmark where there is 1 game:
 
-    ./run_.py -c config.json -n 1
+    ./run_benchmark.py -c config.json -n 1
 
 
 Here we consider 1, 2, 4 and 8 simultaneous connections, reliable
